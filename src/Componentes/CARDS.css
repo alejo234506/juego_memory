@@ -1,0 +1,46 @@
+
+.cuadros {
+    justify-content: center;
+    gap: 1em;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.cuadro{
+    transform-style: preserve-3d;
+    perspective: 700px;
+    width: 5em;
+    height: 5em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.5s;
+}
+
+.cara {
+    backface-visibility: hidden;
+    position: absolute;
+    width: 112%;
+    height: 108%;
+}
+
+.dentro{
+    background-color: rgb(85, 51, 119) ;
+    width: 100px;
+    font-size:  4em;
+    border-radius: 10px;
+    transform: rotateY(180deg);
+}
+
+.blanco {
+    background-color: rgb(235, 191, 255);
+    border-radius: 5px;
+}
+
+.mostrar {
+    transform: rotateY(180deg);
+}
+.puntaje{
+    gap: 3em;
+    display: flex;
+}
