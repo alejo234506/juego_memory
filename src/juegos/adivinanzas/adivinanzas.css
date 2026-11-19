@@ -1,0 +1,808 @@
+/* =========================================================
+   ADIVINANZAS — fichas de papel sobre el tapete, pistas en notas
+   (todas las clases empiezan por adv- para no chocar con otros juegos)
+   ========================================================= */
+
+.adv {
+  --adv-papel-lineas: rgba(70, 110, 170, 0.16);
+  --adv-margen: rgba(220, 70, 70, 0.35);
+  --adv-nota: #fff1a1;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adv-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ============ Portada ============ */
+.adv-portada {
+  position: relative;
+  padding: 26px 26px 20px;
+  color: var(--tinta);
+  border-radius: 6px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.7), transparent 45%),
+    repeating-linear-gradient(transparent 0 31px, var(--adv-papel-lineas) 31px 32px),
+    linear-gradient(var(--papel), var(--papel-2));
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25), 0 22px 30px -18px rgba(0, 0, 0, 0.8);
+  transform: rotate(-0.6deg);
+}
+
+.adv-portada__cinta,
+.adv-carta__cinta {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  width: 120px;
+  height: 28px;
+  transform: translateX(-50%) rotate(-3deg);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.3) 0 6px, transparent 6px 12px),
+    var(--adv-color, #ffcf4a);
+  opacity: 0.85;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  clip-path: polygon(0 0, 100% 0, 97% 25%, 100% 50%, 97% 75%, 100% 100%, 0 100%, 3% 75%, 0 50%, 3% 25%);
+}
+
+.adv-portada__sobre {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #8a7350;
+}
+
+.adv-portada__titulo {
+  font-size: clamp(1.6rem, 4.5vw, 2.3rem);
+  margin: 2px 0 8px;
+}
+
+.adv-portada__texto {
+  max-width: 60ch;
+  line-height: 1.5;
+}
+
+/* ============ Bloques de opciones ============ */
+.adv-bloque {
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--panel-borde);
+}
+
+.adv-bloque__titulo {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.adv-categorias {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.adv-categoria {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 8px 12px;
+  border: none;
+  border-radius: 10px;
+  color: var(--tinta);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.65), transparent 50%),
+    linear-gradient(var(--papel), var(--papel-2));
+  border-top: 6px solid var(--adv-color);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 10px 16px -10px rgba(0, 0, 0, 0.7);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.adv-categoria:hover {
+  transform: translateY(-3px) rotate(-1deg);
+}
+
+.adv-categoria--activa {
+  transform: translateY(-4px);
+  box-shadow: 0 0 0 3px var(--acento), 0 14px 20px -10px rgba(0, 0, 0, 0.8);
+}
+
+.adv-categoria__icono {
+  font-size: 1.9rem;
+}
+
+.adv-categoria__nombre {
+  font-weight: 600;
+}
+
+.adv-categoria small {
+  font-size: 0.75rem;
+  color: #8a7350;
+}
+
+.adv-ajustes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+/* Interruptor tipo palanca */
+.adv-interruptor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.adv-interruptor input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.adv-interruptor small {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+}
+
+.adv-interruptor__riel {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  transition: background-color 0.2s;
+}
+
+.adv-interruptor__riel::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(#fff, #ddd);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s;
+}
+
+.adv-interruptor input:checked + .adv-interruptor__riel {
+  background: var(--ok);
+}
+
+.adv-interruptor input:checked + .adv-interruptor__riel::after {
+  transform: translateX(20px);
+}
+
+.adv-interruptor input:focus-visible + .adv-interruptor__riel {
+  outline: 3px solid var(--acento);
+  outline-offset: 3px;
+}
+
+.adv-arranque {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.adv-record {
+  color: var(--texto-suave);
+}
+
+.adv-record strong {
+  color: var(--texto);
+}
+
+.adv-empezar {
+  font-size: 1.15rem;
+  padding: 12px 28px;
+}
+
+.adv-reglas {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.adv-reglas summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.adv-reglas summary:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 3px;
+}
+
+.adv-reglas ul {
+  margin: 8px 0 0 20px;
+  line-height: 1.6;
+}
+
+/* ============ Marcador y progreso ============ */
+.adv-marcador {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+
+.adv-fuego {
+  color: var(--acento);
+  animation: adv-latido 0.9s ease-in-out infinite alternate;
+}
+
+.adv-reloj {
+  position: relative;
+  overflow: hidden;
+}
+
+.adv-reloj__barra {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.adv-reloj__barra span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  transition: width 0.2s linear;
+}
+
+.adv-reloj--urgente .dato__valor {
+  color: var(--error);
+  animation: adv-latido 0.5s ease-in-out infinite alternate;
+}
+
+.adv-reloj--urgente .adv-reloj__barra span {
+  background: var(--error);
+}
+
+.adv-progreso {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  list-style: none;
+}
+
+.adv-punto {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5);
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.adv-punto--actual {
+  background: var(--acento);
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px rgba(255, 207, 74, 0.35);
+}
+
+.adv-punto--bien {
+  background: var(--ok);
+}
+
+.adv-punto--mal {
+  background: var(--error);
+}
+
+/* ============ Ficha de la adivinanza ============ */
+.adv-mesa {
+  flex: none;
+  padding: clamp(28px, 5vw, 48px) clamp(14px, 4vw, 40px);
+}
+
+.adv-carta {
+  position: relative;
+  width: min(100%, 620px);
+  padding: 30px clamp(18px, 4vw, 36px) 24px clamp(30px, 6vw, 56px);
+  color: var(--tinta);
+  border-radius: 4px;
+  /* ficha rayada con margen rojo */
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.7), transparent 40%),
+    linear-gradient(90deg, transparent clamp(20px, 4.5vw, 42px), var(--adv-margen) 0 calc(clamp(20px, 4.5vw, 42px) + 2px), transparent 0),
+    repeating-linear-gradient(transparent 0 29px, var(--adv-papel-lineas) 29px 30px),
+    linear-gradient(var(--papel), var(--papel-2));
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.25),
+    0 18px 26px -14px rgba(0, 0, 0, 0.85),
+    10px 26px 28px -22px rgba(0, 0, 0, 0.6);
+  transform: rotate(-0.8deg);
+  animation: adv-entrar 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  transition: box-shadow 0.3s;
+}
+
+.adv-carta--bien {
+  box-shadow: 0 0 0 4px var(--ok), 0 18px 30px -14px rgba(0, 0, 0, 0.85);
+  animation: adv-saltar 0.5s ease both;
+}
+
+.adv-carta--mal {
+  box-shadow: 0 0 0 4px var(--error), 0 18px 30px -14px rgba(0, 0, 0, 0.85);
+}
+
+.adv-carta__cabeza {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.adv-etiqueta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--adv-color);
+  color: #2b2118;
+}
+
+.adv-carta__numero {
+  font-size: 0.85rem;
+  color: #8a7350;
+  font-variant-numeric: tabular-nums;
+}
+
+.adv-carta__texto {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: clamp(1.15rem, 3vw, 1.5rem);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.adv-carta__texto span {
+  color: #b08a52;
+  font-size: 1.3em;
+  line-height: 0;
+}
+
+.adv-carta__pregunta {
+  margin-top: 10px;
+  font-weight: 600;
+  color: #8a7350;
+}
+
+/* Notas adhesivas con las pistas */
+.adv-pistas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.adv-pista {
+  flex: 1 1 200px;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #3a3020;
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.5), transparent 30%), var(--adv-nota);
+  border-radius: 2px 2px 30px 2px / 2px 2px 6px 2px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 10px 12px -8px rgba(0, 0, 0, 0.55);
+  transform: rotate(calc(1.5deg - var(--n) * 3deg));
+  animation: adv-pegar 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* Sello al resolver */
+.adv-sello {
+  position: absolute;
+  right: clamp(10px, 3vw, 26px);
+  bottom: clamp(10px, 3vw, 22px);
+  max-width: 60%;
+  padding: 4px 14px;
+  font-family: Impact, 'Arial Black', sans-serif;
+  font-size: clamp(1.1rem, 3.4vw, 1.6rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 4px double currentColor;
+  border-radius: 8px;
+  transform: rotate(-10deg);
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+  pointer-events: none;
+  animation: adv-estampar 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.adv-sello--bien {
+  color: #1d8a55;
+}
+
+.adv-sello--mal {
+  color: #c0303f;
+}
+
+/* ============ Zona de respuesta ============ */
+.adv-respuesta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adv-formulario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.adv-entrada {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 1.15rem;
+  color: var(--tinta);
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(var(--papel), var(--papel-2));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.adv-entrada::placeholder {
+  color: #9b8b70;
+}
+
+.adv-entrada:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.adv-formulario .boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.adv-intentos {
+  flex-basis: 100%;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.adv-vida {
+  color: var(--ok);
+  margin-right: 2px;
+}
+
+.adv-vida--gastada {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.adv-casi {
+  color: var(--error);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.adv-sacudir {
+  animation: adv-sacudir 0.4s ease;
+}
+
+/* Opciones como fichas */
+.adv-opciones {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.adv-opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: left;
+  color: var(--tinta);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.7), transparent 50%), linear-gradient(var(--papel), var(--papel-2));
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 10px 14px -10px rgba(0, 0, 0, 0.7);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.3s;
+  animation: adv-pegar 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.adv-opcion:nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.adv-opcion:nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+.adv-opcion:nth-child(4) {
+  animation-delay: 0.15s;
+}
+
+.adv-opcion:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+
+.adv-opcion:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.adv-opcion:disabled {
+  cursor: default;
+}
+
+.adv-opcion__letra {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  color: var(--papel);
+  background: var(--tinta);
+}
+
+.adv-opcion--bien {
+  box-shadow: 0 0 0 3px var(--ok), 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.adv-opcion--bien .adv-opcion__letra {
+  background: var(--ok);
+  color: #06351f;
+}
+
+.adv-opcion--mal {
+  box-shadow: 0 0 0 3px var(--error), 0 3px 0 rgba(0, 0, 0, 0.3);
+  animation: adv-sacudir 0.4s ease;
+}
+
+.adv-opcion--mal .adv-opcion__letra {
+  background: var(--error);
+}
+
+.adv-opcion--apagada {
+  opacity: 0.5;
+}
+
+.adv-herramientas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adv-herramientas .boton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.adv-saltar {
+  margin-left: auto;
+}
+
+/* Resultado de la adivinanza */
+.adv-resultado {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 2px solid var(--panel-borde);
+  animation: adv-pegar 0.35s ease both;
+}
+
+.adv-resultado--bien {
+  border-color: var(--ok);
+}
+
+.adv-resultado--mal {
+  border-color: var(--error);
+}
+
+.adv-resultado__titulo {
+  font-size: 1.1rem;
+}
+
+.adv-resultado--bien .adv-resultado__titulo strong {
+  color: var(--ok);
+  font-size: 1.3rem;
+}
+
+.adv-resultado__titulo small {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--texto-suave);
+}
+
+.adv-pie p {
+  margin: 0;
+}
+
+/* ============ Resumen de la ronda ============ */
+.adv-resumen {
+  width: min(100%, 520px);
+  max-height: calc(100svh - 32px);
+  overflow-y: auto;
+}
+
+.adv-lista {
+  list-style: none;
+  margin: 14px 0 4px;
+  text-align: left;
+  border-top: 1px dashed rgba(0, 0, 0, 0.2);
+}
+
+.adv-lista li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.2);
+  font-size: 0.88rem;
+}
+
+.adv-lista__marca {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  color: #fff;
+}
+
+.adv-lista--bien .adv-lista__marca {
+  background: #1d8a55;
+}
+
+.adv-lista--mal .adv-lista__marca {
+  background: #c0303f;
+}
+
+.adv-lista__texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.adv-lista__adivinanza {
+  color: #6b5a40;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adv-lista__puntos {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.adv-lista--bien .adv-lista__puntos {
+  color: #1d8a55;
+}
+
+.adv-lista--mal .adv-lista__puntos {
+  color: #a08a6a;
+}
+
+/* ============ Animaciones ============ */
+@keyframes adv-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) rotate(4deg) scale(0.96);
+  }
+}
+
+@keyframes adv-saltar {
+  0% {
+    transform: rotate(-0.8deg);
+  }
+  40% {
+    transform: rotate(-0.8deg) translateY(-10px) scale(1.02);
+  }
+  100% {
+    transform: rotate(-0.8deg);
+  }
+}
+
+@keyframes adv-pegar {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+}
+
+@keyframes adv-estampar {
+  from {
+    opacity: 0;
+    transform: rotate(-10deg) scale(2.4);
+  }
+}
+
+@keyframes adv-sacudir {
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes adv-latido {
+  to {
+    transform: scale(1.12);
+  }
+}
+
+/* ============ Celular ============ */
+@media (max-width: 640px) {
+  .adv-portada {
+    padding: 22px 18px 16px;
+  }
+
+  .adv-categorias {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .adv-marcador {
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  }
+
+  .adv-opciones {
+    grid-template-columns: 1fr;
+  }
+
+  .adv-carta {
+    transform: none;
+  }
+
+  .adv-saltar {
+    margin-left: 0;
+  }
+
+  .adv-herramientas .boton {
+    flex: 1 1 auto;
+  }
+
+  .adv-pie p {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adv *,
+  .adv *::before,
+  .adv *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,41 +1,49 @@
-# 🃏 Juego de Memoria
+# 🧠 Sala de Juegos Mentales
 
-Encuentra todas las parejas de cartas con la menor cantidad de movimientos y en el menor tiempo.
+Cinco juegos para entrenar la mente, todos sobre una mesa de madera con aspecto realista.
 
 **Jugar en línea:** https://juego-memory.vercel.app/
 
-## Qué tiene
-- Cartas con volteo 3D realista sobre una mesa de madera con tapete de fieltro
-- 4 niveles: Fácil (4×3), Medio (4×4), Clásico (5×4) y Difícil (6×5)
-- 3 mazos: Originales, Animales y Comida
-- Movimientos, cronómetro, estrellas (★★★) y racha de aciertos
-- Récord por nivel guardado en el navegador
-- Pantalla de victoria con confeti y botón para pasar al siguiente nivel
-- Efectos de sonido (se pueden silenciar 🔇)
-- Tema claro y oscuro
-- Funciona en el celular y se puede jugar con el teclado (flechas + Enter)
+| Juego | Entrena | Qué tiene |
+|--|--|--|
+| 🃏 **Memoria** | Memoria | Cartas 3D, 4 niveles, 3 mazos, rachas, estrellas y récords |
+| 🧩 **Rompecabezas** | Lógica | Fichas deslizantes 3×3, 4×4 y 5×5, con números o con imágenes (Atardecer y Océano) |
+| 🤔 **Adivinanzas** | Ingenio | 52 adivinanzas en 6 categorías, pistas, opciones, rachas y contrarreloj |
+| 🕵️ **Detective** | Deducción | 5 casos originales: investiga lugares, interroga sospechosos, usa la libreta y acusa al culpable |
+| 🔤 **Sopa de letras** | Atención | 9 temas, 3 dificultades, palabras en diagonal y al revés, se juega arrastrando |
+
+Para todos los juegos:
+- Efectos de sonido (se pueden silenciar 🔇) y tema claro / oscuro 🌙
+- Récords y progreso guardados en el navegador
+- Funcionan en el celular y con el teclado
 
 ## Cómo correrlo en tu computador
+Necesitas [Node.js](https://nodejs.org) instalado.
+
 ```bash
-npm install
-npm run dev
+npm install      # solo la primera vez: descarga lo necesario
+npm run dev      # abre el servidor de desarrollo
 ```
 Luego abre el enlace que aparece en la terminal (por ejemplo `http://localhost:5173`).
+Para apagarlo: `Ctrl + C` en la terminal.
 
 Para generar la versión final: `npm run build` (queda en la carpeta `dist`).
 
 ## Estructura
 ```
 src/
-├── App.jsx                 # pantalla principal: opciones, marcador y tablero
-├── Componentes/
-│   ├── Carta.jsx           # una carta (dorso y frente)
-│   └── Victoria.jsx        # pantalla de victoria con confeti
-├── logica/
-│   ├── juego.js            # reglas del juego (barajar, voltear, parejas, estrellas)
-│   ├── sonido.js           # sonidos generados con Web Audio
-│   └── almacen.js          # guardar récords y preferencias
-└── index.css               # todo el diseño
+├── App.jsx                   # la sala: menú de juegos, sonido y tema
+├── index.css                 # diseño general (mesa, botones, victoria)
+├── Componentes/              # Carta y Victoria (usados por Memoria)
+├── logica/                   # sonido.js y almacen.js (compartidos) + juego.js (Memoria)
+└── juegos/
+    ├── memoria/Memoria.jsx
+    ├── rompecabezas/         # Rompecabezas.jsx, logica.js, rompecabezas.css
+    ├── adivinanzas/          # Adivinanzas.jsx, logica.js, datos.js, adivinanzas.css
+    ├── detective/            # Detective.jsx, logica.js, casos.js, detective.css
+    └── sopa/                 # SopaDeLetras.jsx, logica.js, temas.js, sopa.css
 ```
+
+Cada juego tiene su lógica en `logica.js` (funciones puras, fáciles de probar) y su contenido aparte (`datos.js`, `casos.js`, `temas.js`), así que agregar adivinanzas, casos o temas nuevos es solo editar esos archivos.
 
 Hecho con React + Vite.

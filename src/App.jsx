@@ -1,100 +1,132 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
-import Carta from './Componentes/Carta.jsx';
-import Victoria from './Componentes/Victoria.jsx';
-import {
-  NIVELES,
-  ORDEN_NIVELES,
-  MAZOS,
-  reducer,
-  estadoInicial,
-  calcularEstrellas,
-  formatoTiempo,
-  esMejorMarca,
-} from './logica/juego.js';
-import { sonidos, ponerSilencio } from './logica/sonido.js';
+import { Component, Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { ponerSilencio, sonidos } from './logica/sonido.js';
 import { leer, guardar } from './logica/almacen.js';
 
-const prefsGuardadas = leer('memoria-prefs', {});
-const nivelInicial = prefsGuardadas.nivel in NIVELES ? prefsGuardadas.nivel : 'medio';
-const mazoInicial = prefsGuardadas.mazo in MAZOS ? prefsGuardadas.mazo : 'original';
+// Cada juego se carga solo cuando lo abres (la página inicial carga más rápido)
+const JUEGOS = [
+  {
+    id: 'memoria',
+    nombre: 'Memoria',
+    icono: '🃏',
+    habilidad: 'Memoria',
+    descripcion: 'Voltea las cartas y encuentra todas las parejas.',
+    color: '#9b1f40',
+    Componente: lazy(() => import('./juegos/memoria/Memoria.jsx')),
+  },
+  {
+    id: 'rompecabezas',
+    nombre: 'Rompecabezas',
+    icono: '🧩',
+    habilidad: 'Lógica',
+    descripcion: 'Desliza las fichas hasta armar la imagen.',
+    color: '#2a6fb0',
+    Componente: lazy(() => import('./juegos/rompecabezas/Rompecabezas.jsx')),
+  },
+  {
+    id: 'adivinanzas',
+    nombre: 'Adivinanzas',
+    icono: '🤔',
+    habilidad: 'Ingenio',
+    descripcion: 'Resuelve acertijos con pistas y gana rachas.',
+    color: '#d0851a',
+    Componente: lazy(() => import('./juegos/adivinanzas/Adivinanzas.jsx')),
+  },
+  {
+    id: 'detective',
+    nombre: 'Detective',
+    icono: '🕵️',
+    habilidad: 'Deducción',
+    descripcion: 'Investiga pistas, interroga sospechosos y resuelve el crimen.',
+    color: '#3d3a4f',
+    Componente: lazy(() => import('./juegos/detective/Detective.jsx')),
+  },
+  {
+    id: 'sopa',
+    nombre: 'Sopa de letras',
+    icono: '🔤',
+    habilidad: 'Atención',
+    descripcion: 'Encuentra las palabras escondidas en todas las direcciones.',
+    color: '#1f7a4d',
+    Componente: lazy(() => import('./juegos/sopa/SopaDeLetras.jsx')),
+  },
+];
+
+const rutaActual = () => {
+  const id = window.location.hash.replace(/^#\/?/, '');
+  return JUEGOS.some((j) => j.id === id) ? id : null;
+};
+
 const temaSistema = () => (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
 
+function prefsIniciales() {
+  // Antes el tema y el sonido se guardaban en las preferencias de la memoria
+  const viejas = leer('memoria-prefs', {});
+  const prefs = { ...viejas, ...leer('sala-prefs', {}) };
+  return {
+    tema: prefs.tema === 'oscuro' || prefs.tema === 'claro' ? prefs.tema : temaSistema(),
+    silencio: !!prefs.silencio,
+  };
+}
+
+// Si un juego falla, se muestra un aviso en vez de dejar la página en blanco
+class ProteccionJuego extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="sala-error" role="alert">
+          <p>😵 Algo salió mal al abrir este juego.</p>
+          <button type="button" className="boton boton--principal" onClick={this.props.onVolver}>
+            Volver a la sala
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const Cargando = () => (
+  <div className="sala-cargando" role="status">
+    <span className="sala-cargando__cartas" aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+    Preparando la mesa…
+  </div>
+);
+
 const App = () => {
-  const [estado, despachar] = useReducer(reducer, null, () => estadoInicial(nivelInicial, mazoInicial));
-  const [ahora, setAhora] = useState(() => Date.now());
-  const [silencio, setSilencio] = useState(!!prefsGuardadas.silencio);
-  const [tema, setTema] = useState(prefsGuardadas.tema === 'oscuro' || prefsGuardadas.tema === 'claro' ? prefsGuardadas.tema : temaSistema());
-  const [records, setRecords] = useState(() => leer('memoria-records', {}));
-  const [nuevoRecord, setNuevoRecord] = useState(false);
-  const [aviso, setAviso] = useState(null);
-  const recordsRef = useRef(records);
-  const tableroRef = useRef(null);
+  const [ruta, setRuta] = useState(rutaActual);
+  const [{ tema, silencio }, setPrefs] = useState(prefsIniciales);
+  const tituloRef = useRef(null);
+  const primeraVez = useRef(true);
 
-  const nivel = NIVELES[estado.nivel];
-  const tiempo = estado.inicio ? Math.max(0, (estado.fin ?? ahora) - estado.inicio) : 0;
-  const estrellasActuales = calcularEstrellas(estado.movimientos, estado.totalParejas);
-  const record = records[estado.nivel];
+  const juego = JUEGOS.find((j) => j.id === ruta);
 
-  // Cronómetro: corre desde la primera carta hasta ganar
+  // La ruta vive en la URL (#/memoria), así funcionan el botón "atrás" y los enlaces
   useEffect(() => {
-    if (!estado.inicio || estado.fin) return;
-    setAhora(Date.now());
-    const t = setInterval(() => setAhora(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [estado.inicio, estado.fin]);
+    const alCambiar = () => setRuta(rutaActual());
+    window.addEventListener('hashchange', alCambiar);
+    return () => window.removeEventListener('hashchange', alCambiar);
+  }, []);
 
-  // Si no son pareja, se vuelven a tapar después de un momento
   useEffect(() => {
-    if (estado.resultado?.tipo !== 'fallo') return;
-    const t = setTimeout(() => despachar({ type: 'RESOLVER' }), 1050);
-    return () => clearTimeout(t);
-  }, [estado.resultado]);
-
-  // Sonidos, rachas y récords según lo que acaba de pasar
-  useEffect(() => {
-    const r = estado.resultado;
-    if (!r) return;
-    if (r.tipo === 'volteo') sonidos.voltear();
-    if (r.tipo === 'fallo') {
-      sonidos.voltear();
-      sonidos.fallo();
+    document.title = juego ? `${juego.nombre} · Sala de Juegos` : 'Sala de Juegos Mentales';
+    if (primeraVez.current) {
+      primeraVez.current = false;
+      return;
     }
-    if (r.tipo === 'pareja' || r.tipo === 'victoria') {
-      sonidos.voltear();
-      sonidos.pareja();
-      if (r.racha >= 2) {
-        sonidos.racha();
-        setAviso({ texto: `¡Racha x${r.racha}! 🔥`, n: r.n });
-      }
-    }
-    if (r.tipo === 'victoria') {
-      const t = setTimeout(sonidos.victoria, 450);
-      const marca = {
-        movimientos: estado.movimientos,
-        tiempo: estado.fin - estado.inicio,
-        estrellas: calcularEstrellas(estado.movimientos, estado.totalParejas),
-      };
-      const esNuevo = esMejorMarca(marca, recordsRef.current[estado.nivel]);
-      setNuevoRecord(esNuevo);
-      if (esNuevo) {
-        const nuevos = { ...recordsRef.current, [estado.nivel]: marca };
-        recordsRef.current = nuevos;
-        setRecords(nuevos);
-        guardar('memoria-records', nuevos);
-      }
-      return () => clearTimeout(t);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estado.resultado]);
+    window.scrollTo({ top: 0 });
+    tituloRef.current?.focus();
+  }, [juego]);
 
-  // El aviso de racha se esconde solo
-  useEffect(() => {
-    if (!aviso) return;
-    const t = setTimeout(() => setAviso(null), 1400);
-    return () => clearTimeout(t);
-  }, [aviso]);
-
-  // Tema, sonido y preferencias
   useEffect(() => {
     document.documentElement.dataset.theme = tema;
   }, [tema]);
@@ -104,53 +136,54 @@ const App = () => {
   }, [silencio]);
 
   useEffect(() => {
-    guardar('memoria-prefs', { nivel: estado.nivel, mazo: estado.mazo, silencio, tema });
-  }, [estado.nivel, estado.mazo, silencio, tema]);
+    guardar('sala-prefs', { tema, silencio });
+  }, [tema, silencio]);
 
-  const reiniciar = (cambios = {}) => {
-    setNuevoRecord(false);
-    setAviso(null);
-    despachar({ type: 'REINICIAR', ...cambios });
+  const abrir = (id) => {
+    sonidos.voltear();
+    window.location.hash = `/${id}`;
   };
 
-  const indiceNivel = ORDEN_NIVELES.indexOf(estado.nivel);
-  const siguienteNivel = ORDEN_NIVELES[indiceNivel + 1];
-
-  // Moverse entre cartas con las flechas del teclado
-  const alPresionarTecla = (e) => {
-    const pasos = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: nivel.columnas, ArrowUp: -nivel.columnas };
-    if (!(e.key in pasos)) return;
-    const actual = Number(document.activeElement?.dataset?.indice);
-    if (Number.isNaN(actual)) return;
-    const destino = actual + pasos[e.key];
-    if (destino < 0 || destino >= estado.cartas.length) return;
-    e.preventDefault();
-    tableroRef.current?.querySelector(`[data-indice="${destino}"]`)?.focus();
-  };
-
-  const animacionDe = (carta) => {
-    const r = estado.resultado;
-    if (!r?.ids?.includes(carta.id)) return '';
-    if (r.tipo === 'fallo') return 'sacudir';
-    if (r.tipo === 'pareja' || r.tipo === 'victoria') return 'celebrar';
-    return '';
+  const volver = () => {
+    if (window.location.hash) {
+      window.location.hash = '';
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    setRuta(null);
   };
 
   return (
     <div className="app">
       <header className="cabecera">
-        <h1 className="logo">
-          <span className="logo__cartas" aria-hidden="true">
-            <span className="mini-dorso" />
-            <span className="mini-frente">💖</span>
-          </span>
-          Juego de <strong>Memoria</strong>
-        </h1>
+        {juego ? (
+          <div className="sala-titulo">
+            <button type="button" className="boton-redondo" onClick={volver} aria-label="Volver a la sala de juegos" title="Volver a la sala">
+              ←
+            </button>
+            <h1 className="logo" ref={tituloRef} tabIndex={-1}>
+              <span className="sala-titulo__icono" aria-hidden="true">
+                {juego.icono}
+              </span>
+              <strong>{juego.nombre}</strong>
+            </h1>
+          </div>
+        ) : (
+          <h1 className="logo" ref={tituloRef} tabIndex={-1}>
+            <span className="logo__cartas" aria-hidden="true">
+              <span className="mini-dorso" />
+              <span className="mini-frente">🧠</span>
+            </span>
+            <span>
+              Sala de <strong>Juegos</strong>
+            </span>
+          </h1>
+        )}
+
         <div className="cabecera__botones">
           <button
             type="button"
             className="boton-redondo"
-            onClick={() => setSilencio((s) => !s)}
+            onClick={() => setPrefs((p) => ({ ...p, silencio: !p.silencio }))}
             aria-label={silencio ? 'Activar sonido' : 'Silenciar'}
             title={silencio ? 'Activar sonido' : 'Silenciar'}
           >
@@ -159,7 +192,7 @@ const App = () => {
           <button
             type="button"
             className="boton-redondo"
-            onClick={() => setTema((t) => (t === 'oscuro' ? 'claro' : 'oscuro'))}
+            onClick={() => setPrefs((p) => ({ ...p, tema: p.tema === 'oscuro' ? 'claro' : 'oscuro' }))}
             aria-label="Cambiar entre tema claro y oscuro"
             title="Cambiar tema"
           >
@@ -168,117 +201,35 @@ const App = () => {
         </div>
       </header>
 
-      <section className="opciones" aria-label="Opciones de juego">
-        <div className="selector" role="group" aria-label="Nivel">
-          {ORDEN_NIVELES.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={`selector__opcion ${estado.nivel === id ? 'activa' : ''}`}
-              aria-pressed={estado.nivel === id}
-              onClick={() => reiniciar({ nivel: id })}
-            >
-              {NIVELES[id].nombre}
-              <small>
-                {NIVELES[id].columnas}×{NIVELES[id].filas}
-              </small>
-            </button>
-          ))}
-        </div>
-        <div className="selector" role="group" aria-label="Mazo de cartas">
-          {Object.entries(MAZOS).map(([id, mazo]) => (
-            <button
-              key={id}
-              type="button"
-              className={`selector__opcion ${estado.mazo === id ? 'activa' : ''}`}
-              aria-pressed={estado.mazo === id}
-              onClick={() => reiniciar({ mazo: id })}
-            >
-              <span aria-hidden="true">{mazo.icono}</span> {mazo.nombre}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="marcador" aria-live="polite">
-        <div className="dato">
-          <span className="dato__titulo">Movimientos</span>
-          <span className="dato__valor">{estado.movimientos}</span>
-        </div>
-        <div className="dato">
-          <span className="dato__titulo">Tiempo</span>
-          <span className="dato__valor">{formatoTiempo(tiempo)}</span>
-        </div>
-        <div className="dato">
-          <span className="dato__titulo">Parejas</span>
-          <span className="dato__valor">
-            {estado.parejas}/{estado.totalParejas}
-          </span>
-        </div>
-        <div className="dato">
-          <span className="dato__titulo">Estrellas</span>
-          <span className="dato__valor estrellas" aria-label={`${estrellasActuales} de 3`}>
-            {[1, 2, 3].map((n) => (
-              <span key={n} className={n <= estrellasActuales ? 'llena' : ''}>
-                ★
-              </span>
+      {juego ? (
+        <ProteccionJuego key={juego.id} onVolver={volver}>
+          <Suspense fallback={<Cargando />}>
+            <juego.Componente />
+          </Suspense>
+        </ProteccionJuego>
+      ) : (
+        <main className="sala">
+          <p className="sala__intro">Elige un juego y pon a prueba tu mente 🧠✨</p>
+          <ul className="sala__juegos">
+            {JUEGOS.map((j, i) => (
+              <li key={j.id} style={{ '--color-caja': j.color, '--i': i }}>
+                <button type="button" className="sala-caja" onClick={() => abrir(j.id)}>
+                  <span className="sala-caja__tapa">
+                    <span className="sala-caja__icono" aria-hidden="true">
+                      {j.icono}
+                    </span>
+                    <span className="sala-caja__nombre">{j.nombre}</span>
+                  </span>
+                  <span className="sala-caja__info">
+                    <span className="sala-caja__habilidad">Entrena: {j.habilidad}</span>
+                    <span className="sala-caja__descripcion">{j.descripcion}</span>
+                    <span className="sala-caja__jugar">Jugar →</span>
+                  </span>
+                </button>
+              </li>
             ))}
-          </span>
-        </div>
-        <div className="dato dato--record">
-          <span className="dato__titulo">🏆 Récord</span>
-          <span className="dato__valor">
-            {record ? `${record.movimientos} mov · ${formatoTiempo(record.tiempo)}` : '—'}
-          </span>
-        </div>
-      </section>
-
-      <main className="mesa">
-        <div
-          ref={tableroRef}
-          className="tablero"
-          style={{ '--cols': nivel.columnas, '--filas': nivel.filas }}
-          onKeyDown={alPresionarTecla}
-          aria-label="Tablero de cartas"
-        >
-          {estado.cartas.map((carta, i) => (
-            <Carta
-              key={carta.id}
-              carta={carta}
-              indice={i}
-              animacion={animacionDe(carta)}
-              onVoltear={() => despachar({ type: 'VOLTEAR', id: carta.id, ahora: Date.now() })}
-            />
-          ))}
-        </div>
-
-        {aviso && (
-          <div key={aviso.n} className="aviso" role="status">
-            {aviso.texto}
-          </div>
-        )}
-      </main>
-
-      <footer className="pie">
-        <button type="button" className="boton" onClick={() => reiniciar()}>
-          ↻ Reiniciar
-        </button>
-        <p>Usa el mouse, toca la pantalla o muévete con las flechas y Enter.</p>
-      </footer>
-
-      {estado.fin && (
-        <Victoria
-          movimientos={estado.movimientos}
-          tiempo={estado.fin - estado.inicio}
-          estrellas={calcularEstrellas(estado.movimientos, estado.totalParejas)}
-          mejorRacha={estado.mejorRacha}
-          nuevoRecord={nuevoRecord}
-          record={record}
-          nivelNombre={nivel.nombre}
-          haySiguiente={!!siguienteNivel}
-          onOtraVez={() => reiniciar()}
-          onSiguiente={() => reiniciar({ nivel: siguienteNivel })}
-        />
+          </ul>
+        </main>
       )}
     </div>
   );

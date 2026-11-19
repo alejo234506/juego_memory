@@ -1,0 +1,316 @@
+/* =========================================================
+   ROMPECABEZAS — bandeja de madera con fichas deslizantes
+   ========================================================= */
+
+.rc {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.rc-marcador {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.rc-mesa {
+  min-height: 320px;
+}
+
+/* Marco de madera oscura que sostiene las fichas */
+.rc-bandeja {
+  position: relative;
+  padding: clamp(10px, 2.2vw, 18px);
+  border-radius: 22px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02 .4' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 .18 0 0 0 0 .09 0 0 0 0 .03 0 0 0 .7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23v)'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, var(--madera-1), var(--madera-3));
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35),
+    0 3px 0 var(--madera-3),
+    0 22px 34px -14px rgba(0, 0, 0, 0.85);
+}
+
+.rc-tablero {
+  --gap: clamp(3px, 0.8vw, 6px);
+  position: relative;
+  width: min(78vw, 520px, max(250px, calc(100svh - 380px)));
+  aspect-ratio: 1;
+  border-radius: 12px;
+  outline: none;
+  /* fondo tallado: la madera hundida donde se deslizan las fichas */
+  background: linear-gradient(160deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.25));
+  box-shadow:
+    inset 0 6px 14px rgba(0, 0, 0, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.rc-tablero:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 6px;
+}
+
+.rc-fondo {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: calc(100% / var(--n)) calc(100% / var(--n));
+  pointer-events: none;
+}
+
+/* ============ Fichas ============ */
+.rc-ficha {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / var(--n));
+  height: calc(100% / var(--n));
+  padding: var(--gap);
+  border: none;
+  background: none;
+  transform: translate(calc(var(--x) * 100%), calc(var(--y) * 100%));
+  transition: transform 0.17s cubic-bezier(0.3, 0.9, 0.4, 1.05), padding 0.5s ease;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rc-ficha--movible {
+  cursor: pointer;
+}
+
+.rc-ficha__cara {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 12%;
+  color: #4a2b12;
+  /* madera clara de arce con vetas */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.015 .3' numOctaves='3' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .26 0 0 0 0 .1 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+    linear-gradient(150deg, #f7dcae, #e2b77a 55%, #cf9c5c);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -3px 0 rgba(120, 70, 25, 0.45),
+    inset 0 0 0 1px rgba(120, 70, 25, 0.25),
+    0 4px 0 #8f5a2a,
+    0 8px 12px -4px rgba(0, 0, 0, 0.55);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.2s;
+}
+
+.rc-ficha--movible:hover .rc-ficha__cara {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+
+.rc-ficha:active .rc-ficha__cara {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 0 rgba(120, 70, 25, 0.45),
+    0 1px 0 #8f5a2a,
+    0 3px 6px -2px rgba(0, 0, 0, 0.5);
+}
+
+/* número grabado (tallado) en la madera */
+.rc-numero {
+  font-size: calc(min(78vw, 520px) / var(--n) * 0.38);
+  font-weight: 700;
+  line-height: 1;
+  color: #5a3313;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55), 0 -1px 0 rgba(0, 0, 0, 0.25);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Ficha en su lugar: marquita verde en la esquina */
+.rc-ficha--correcta .rc-ficha__cara::after {
+  content: '';
+  position: absolute;
+  top: 9%;
+  right: 9%;
+  width: 11%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 0 8px var(--ok);
+}
+
+.rc-tablero:not(.rc-tablero--imagen) .rc-ficha--correcta .rc-numero {
+  color: #2f5a1e;
+}
+
+/* ============ Modo imagen ============ */
+.rc-tablero--imagen .rc-ficha__cara {
+  background-image: var(--imagen);
+  background-size: calc(var(--n) * 100%) calc(var(--n) * 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 4px 0 rgba(0, 0, 0, 0.45),
+    0 8px 12px -4px rgba(0, 0, 0, 0.55);
+}
+
+.rc-numero--chico {
+  position: absolute;
+  left: 8%;
+  bottom: 6%;
+  font-size: clamp(0.6rem, calc(min(78vw, 520px) / var(--n) * 0.16), 0.95rem);
+  padding: 1px 5px;
+  border-radius: 6px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  text-shadow: none;
+}
+
+/* Al armarlo, las fichas se juntan y la imagen queda completa */
+.rc-tablero--armado .rc-ficha {
+  padding: 0;
+}
+
+.rc-tablero--armado.rc-tablero--imagen .rc-ficha__cara {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.rc-tablero--armado.rc-tablero--imagen .rc-numero--chico,
+.rc-tablero--armado .rc-ficha__cara::after {
+  opacity: 0;
+}
+
+.rc-tablero--armado:not(.rc-tablero--imagen) .rc-ficha__cara {
+  animation: rc-brillo 0.6s ease both;
+  animation-delay: calc((var(--x) + var(--y)) * 45ms);
+}
+
+/* ============ Sacudida al tocar una ficha que no se puede mover ============ */
+.rc-sacudir {
+  animation: rc-sacudir 0.35s ease;
+}
+
+/* ============ Vistazo a la imagen armada ============ */
+.rc-vistazo {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.97);
+  transition: opacity 0.25s, transform 0.25s, visibility 0.25s;
+  box-shadow: 0 0 0 4px var(--acento), 0 18px 40px -10px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.rc-vistazo--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+.rc-vistazo__imagen {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+}
+
+.rc-vistazo__numeros {
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(150deg, #f7dcae, #cf9c5c);
+}
+
+.rc-vistazo__numeros span {
+  display: grid;
+  place-items: center;
+  font-size: calc(min(78vw, 520px) / var(--n) * 0.32);
+  font-weight: 700;
+  color: #5a3313;
+  border: 1px solid rgba(90, 51, 19, 0.2);
+}
+
+.rc-vistazo__etiqueta {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #3a2600;
+  background: var(--acento);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ============ Pie ============ */
+.rc-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* miniatura en la pantalla de victoria */
+.rc-miniatura {
+  width: 120px;
+  aspect-ratio: 1;
+  margin: 6px auto 10px;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0 0 4px #fff, 0 10px 20px -8px rgba(0, 0, 0, 0.6);
+  transform: rotate(-3deg);
+}
+
+.rc-datos {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ============ Animaciones ============ */
+@keyframes rc-sacudir {
+  20% { transform: translateX(-5px) rotate(-2deg); }
+  40% { transform: translateX(5px) rotate(2deg); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+@keyframes rc-brillo {
+  50% {
+    filter: brightness(1.25);
+    transform: translateY(-4px);
+  }
+}
+
+/* ============ Celular ============ */
+@media (max-width: 640px) {
+  .rc-marcador {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .rc-tablero {
+    width: min(84vw, max(230px, calc(100svh - 360px)));
+  }
+
+  .rc-numero {
+    font-size: calc(84vw / var(--n) * 0.36);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-ficha,
+  .rc-ficha__cara,
+  .rc-vistazo {
+    transition: none !important;
+  }
+}

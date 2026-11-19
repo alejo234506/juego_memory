@@ -749,3 +749,255 @@ button:focus-visible {
     display: none;
   }
 }
+
+/* =========================================================
+   SALA DE JUEGOS — menú principal con cajas de juegos de mesa
+   ========================================================= */
+.sala-titulo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sala-titulo__icono {
+  font-size: 1.1em;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.4));
+}
+
+.logo:focus {
+  outline: none;
+}
+
+.logo:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.sala {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sala__intro {
+  color: var(--texto-suave);
+  font-size: 1.15rem;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.sala__juegos {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 26px;
+  perspective: 1200px;
+}
+
+.sala__juegos li {
+  animation: sala-aparecer 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i) * 80ms);
+}
+
+/* La caja: tapa de color con dibujo + costado de cartón */
+.sala-caja {
+  --color-caja: #9b1f40;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+  text-align: left;
+  background: var(--papel);
+  color: var(--tinta);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.25),
+    0 10px 0 -2px color-mix(in srgb, var(--color-caja) 60%, black),
+    0 22px 28px -10px rgba(0, 0, 0, 0.65);
+  transform: rotateX(8deg);
+  transform-origin: bottom;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+
+.sala-caja:hover,
+.sala-caja:focus-visible {
+  transform: rotateX(0) translateY(-8px) scale(1.03);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.25),
+    0 14px 0 -2px color-mix(in srgb, var(--color-caja) 60%, black),
+    0 34px 36px -12px rgba(0, 0, 0, 0.7);
+}
+
+.sala-caja:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.sala-caja__tapa {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 150px;
+  padding: 18px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.35), transparent 45%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.07) 0 10px, transparent 10px 20px),
+    var(--color-caja);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Marco dorado de la tapa */
+.sala-caja__tapa::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 2px solid rgba(255, 215, 120, 0.55);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.sala-caja__icono {
+  font-size: 3.4rem;
+  line-height: 1;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.4));
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sala-caja:hover .sala-caja__icono,
+.sala-caja:focus-visible .sala-caja__icono {
+  transform: scale(1.18) rotate(-8deg);
+}
+
+.sala-caja__nombre {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.sala-caja__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 16px;
+  background: linear-gradient(180deg, var(--papel), var(--papel-2));
+}
+
+.sala-caja__habilidad {
+  align-self: flex-start;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--color-caja);
+}
+
+.sala-caja__descripcion {
+  flex: 1;
+  line-height: 1.35;
+}
+
+.sala-caja__jugar {
+  align-self: flex-end;
+  font-weight: 700;
+  color: var(--color-caja);
+  transition: transform 0.2s;
+}
+
+.sala-caja:hover .sala-caja__jugar {
+  transform: translateX(4px);
+}
+
+/* Cargando y error */
+.sala-cargando,
+.sala-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 300px;
+  font-size: 1.2rem;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.sala-cargando__cartas {
+  display: flex;
+  gap: 8px;
+}
+
+.sala-cargando__cartas span {
+  width: 30px;
+  height: 42px;
+  border-radius: 5px;
+  border: 2px solid #fff;
+  background: repeating-linear-gradient(45deg, var(--dorso-1) 0 4px, var(--dorso-2) 4px 8px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  animation: sala-saltar 0.9s ease-in-out infinite;
+}
+
+.sala-cargando__cartas span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.sala-cargando__cartas span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes sala-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.92);
+  }
+}
+
+@keyframes sala-saltar {
+  50% {
+    transform: translateY(-12px) rotate(8deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .sala__juegos {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .sala-caja__tapa {
+    min-height: 110px;
+    padding: 12px;
+  }
+
+  .sala-caja__icono {
+    font-size: 2.6rem;
+  }
+
+  .sala-caja__nombre {
+    font-size: 1.15rem;
+    text-align: center;
+  }
+
+  .sala-caja__info {
+    padding: 10px 12px 12px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .sala__juegos {
+    grid-template-columns: 1fr;
+  }
+}

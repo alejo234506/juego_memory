@@ -1,0 +1,511 @@
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&family=Patrick+Hand&display=swap');
+
+/* =========================================================
+   SOPA DE LETRAS — hoja impresa sobre el tapete
+   ========================================================= */
+
+.sopa {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sopa-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Opciones ---------- */
+.sopa-opciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.sopa-tema {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 14px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-borde);
+  font-weight: 600;
+}
+
+.sopa-tema span {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-suave);
+}
+
+.sopa-tema select {
+  font: inherit;
+  color: var(--tinta);
+  background: linear-gradient(to bottom, var(--papel), var(--papel-2));
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.sopa-tema select:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/* ---------- Marcador ---------- */
+.sopa-marcador {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+/* ---------- Mesa y hoja ---------- */
+.sopa-mesa {
+  overflow: hidden;
+}
+
+.sopa-hoja {
+  --linea: rgba(43, 33, 24, 0.14);
+  position: relative;
+  z-index: 1;
+  width: min(100%, 920px);
+  padding: clamp(14px, 3vw, 30px) clamp(12px, 3vw, 34px) clamp(16px, 3vw, 28px);
+  color: var(--tinta);
+  border-radius: 4px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E"),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.7), transparent 35%),
+    linear-gradient(to bottom, var(--papel), var(--papel-2));
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.25),
+    0 18px 30px -14px rgba(0, 0, 0, 0.7),
+    0 40px 60px -30px rgba(0, 0, 0, 0.5);
+  transform: rotate(-0.6deg);
+  animation: sopa-entrar 0.5s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+/* clip metálico arriba */
+.sopa-hoja::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 90px;
+  height: 26px;
+  margin-left: -45px;
+  border-radius: 6px 6px 10px 10px;
+  background: linear-gradient(to bottom, #e9e9ee, #a9abb5 45%, #d7d8de 60%, #8e909a);
+  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.sopa-hoja__cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 6px 16px;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  border-bottom: 3px double var(--linea);
+}
+
+.sopa-hoja__numero {
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.sopa-hoja__titulo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.5rem, 4.5vw, 2.3rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+.sopa-hoja__tema {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  font-size: 1.35rem;
+}
+
+.sopa-hoja__tema small {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  opacity: 0.7;
+}
+
+.sopa-hoja__cuerpo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(14px, 3vw, 28px);
+  align-items: flex-start;
+}
+
+/* ---------- Cuadrícula ---------- */
+.sopa-caja {
+  flex: 1 1 320px;
+  max-width: 600px;
+  margin: 0 auto;
+  container-type: inline-size;
+}
+
+.sopa-grilla {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--tam), 1fr);
+  aspect-ratio: 1;
+  border: 2px solid rgba(43, 33, 24, 0.55);
+  background-color: rgba(255, 255, 255, 0.35);
+  background-image:
+    linear-gradient(var(--linea) 1px, transparent 1px),
+    linear-gradient(90deg, var(--linea) 1px, transparent 1px);
+  background-size: calc(100% / var(--tam)) calc(100% / var(--tam));
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+  outline: none;
+}
+
+.sopa-grilla:focus-visible {
+  box-shadow: 0 0 0 4px var(--acento);
+}
+
+.sopa-fila {
+  display: contents;
+}
+
+.sopa-celda {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-weight: 700;
+  font-size: calc(100cqi / var(--tam) * 0.58);
+  line-height: 1;
+  color: var(--tinta);
+  pointer-events: none;
+}
+
+.sopa-celda--ancla {
+  color: #fff;
+}
+
+.sopa-celda--ancla::before,
+.sopa-celda--cursor::after,
+.sopa-celda--pista::after {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.sopa-celda--ancla::before {
+  background: #2a62d6;
+}
+
+.sopa-celda--cursor::after {
+  inset: 4%;
+  border-radius: 6px;
+  border: 2.5px solid #2a62d6;
+}
+
+.sopa-celda--pista::after {
+  inset: -6%;
+  border: 3px solid #f08a00;
+  background: rgba(255, 196, 0, 0.35);
+  animation: sopa-pista 0.65s ease-in-out 4;
+}
+
+/* Capas de trazos: resaltador sobre la hoja */
+.sopa-trazos {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sopa-capsula line {
+  stroke-linecap: round;
+}
+
+.sopa-capsula__relleno {
+  stroke-width: 0.78;
+  opacity: 0.6;
+  mix-blend-mode: multiply;
+}
+
+.sopa-capsula--nueva .sopa-capsula__relleno {
+  stroke-dasharray: 1;
+  animation: sopa-trazar 0.35s ease-out both;
+}
+
+.sopa-seleccion {
+  stroke: #2a62d6;
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  opacity: 0.35;
+  fill: #2a62d6;
+}
+
+.sopa-seleccion--punto {
+  stroke: none;
+  opacity: 0.25;
+}
+
+.sopa-error {
+  stroke: var(--error);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  opacity: 0.5;
+  animation: sopa-error 0.5s ease-out both;
+}
+
+/* ---------- Lista de palabras ---------- */
+.sopa-lista-caja {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+.sopa-lista-caja h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid var(--linea);
+}
+
+.sopa-lista {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 4px 12px;
+}
+
+.sopa-lista li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.sopa-lista__marca {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(43, 33, 24, 0.55);
+  border-radius: 3px 5px 3px 4px;
+  transition: background-color 0.3s;
+}
+
+.sopa-lista__texto {
+  position: relative;
+}
+
+/* tachón a mano */
+.sopa-lista__texto::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 55%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--tinta);
+  transform: scaleX(0) rotate(-2deg);
+  transform-origin: left;
+}
+
+.sopa-lista__hallada .sopa-lista__texto {
+  opacity: 0.5;
+}
+
+.sopa-lista__hallada .sopa-lista__texto::after {
+  transform: scaleX(1) rotate(-2deg);
+}
+
+.sopa-lista__recien .sopa-lista__texto::after {
+  animation: sopa-tachar 0.4s 0.2s ease-out both;
+}
+
+.sopa-lista__recien {
+  animation: sopa-saltar 0.5s ease both;
+}
+
+.sopa-direcciones {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.sopa-direcciones span {
+  letter-spacing: 0.25em;
+  font-weight: 700;
+}
+
+/* ---------- Lápiz decorativo ---------- */
+.sopa-lapiz {
+  position: absolute;
+  right: 4%;
+  bottom: 6%;
+  z-index: 2;
+  width: 220px;
+  height: 18px;
+  border-radius: 3px 0 0 3px;
+  background:
+    linear-gradient(to right, #f4a7b9 0 14%, #c9c9cf 14% 20%, transparent 20%),
+    linear-gradient(to bottom, #ffd84d, #f5b800 50%, #d99a00);
+  clip-path: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%);
+  box-shadow: 0 6px 6px rgba(0, 0, 0, 0.4);
+  transform: rotate(-28deg);
+  pointer-events: none;
+}
+
+/* punta de madera y grafito */
+.sopa-lapiz::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 12%;
+  height: 100%;
+  background: linear-gradient(to right, #e9c69a 0 70%, #3a3a3a 70%);
+}
+
+@media (max-width: 1100px) {
+  .sopa-lapiz {
+    display: none;
+  }
+}
+
+/* ---------- Pie ---------- */
+.sopa-pie__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sopa-pie .boton small {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.sopa-pie .boton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- Animaciones ---------- */
+@keyframes sopa-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(30px) rotate(-3deg);
+  }
+}
+
+@keyframes sopa-trazar {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes sopa-error {
+  0% { opacity: 0.6; transform: translateX(0); }
+  25% { transform: translateX(0.12px); }
+  50% { transform: translateX(-0.12px); }
+  100% { opacity: 0; }
+}
+
+@keyframes sopa-pista {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.18); opacity: 0.6; }
+}
+
+@keyframes sopa-tachar {
+  from { transform: scaleX(0) rotate(-2deg); }
+  to { transform: scaleX(1) rotate(-2deg); }
+}
+
+@keyframes sopa-saltar {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(-4px) scale(1.06); }
+}
+
+/* ---------- Celulares ---------- */
+@media (max-width: 640px) {
+  .sopa-opciones {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sopa-tema {
+    justify-content: space-between;
+  }
+
+  .sopa-marcador {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sopa-mesa {
+    padding: 10px;
+  }
+
+  .sopa-hoja {
+    transform: none;
+  }
+
+  .sopa-grilla {
+    border-width: 1.5px;
+  }
+
+  .sopa-lista {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .sopa-lista li {
+    font-size: 1.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sopa *,
+  .sopa *::before,
+  .sopa *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
