@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './sopa.css';
-import { TEMAS, ORDEN_TEMAS } from './temas.js';
+import { TEMAS, ORDEN_TEMAS, entradasDe } from './temas.js';
 import {
   DIFICULTADES,
   ORDEN_DIFICULTADES,
@@ -12,6 +12,12 @@ import {
   extremos,
   formatoTiempo,
   estrellasPorPistas,
+  MODOS,
+  ORDEN_MODOS,
+  tiempoRestante,
+  claveRecord,
+  esMejor,
+  mascara,
 } from './logica.js';
 import { sonidos } from '../../logica/sonido.js';
 import { leer, guardar } from '../../logica/almacen.js';
@@ -22,13 +28,17 @@ const FLECHAS = { '0,1': '→', '1,0': '↓', '1,1': '↘', '-1,1': '↗', '0,-1
 const prefs = leer('sopa-prefs', {});
 const temaGuardado = prefs.tema === 'azar' || prefs.tema in TEMAS ? prefs.tema : 'animales';
 const difGuardada = prefs.dificultad in DIFICULTADES ? prefs.dificultad : 'facil';
+const modoGuardado = prefs.modo in MODOS ? prefs.modo : 'clasico';
 
-function crearPartida(tema, dificultad) {
+function crearPartida(tema, dificultad, modo) {
   const idTema = tema === 'azar' ? ORDEN_TEMAS[Math.floor(Math.random() * ORDEN_TEMAS.length)] : tema;
   return {
     idTema,
     dificultad,
-    sopa: generarSopa(TEMAS[idTema].palabras, dificultad),
+    modo,
+    sopa: generarSopa(entradasDe(idTema), dificultad),
+    ayudas: {}, // modo Rompecráneos: id de palabra -> 1 (primera letra) o 2 (señalada en la grilla)
+    agotado: false, // contrarreloj: se acabó el tiempo
     encontradas: [], // { id, inicio, fin, color }
     inicio: null,
     fin: null,
@@ -43,10 +53,14 @@ const centro = (c) => ({ x: c.col + 0.5, y: c.fila + 0.5 });
 // ---------- Pantalla de victoria ----------
 const COLORES_CONFETI = ['#ffcf4a', '#ff6b8b', '#4ad9a0', '#5cb8ff', '#b78cff', '#ff9f43'];
 
-function Victoria({ tiempo, pistas, palabras, nuevoRecord, record, dificultad, haySiguiente, onOtraVez, onSiguiente }) {
+function Victoria({ tiempo, pistas, palabras, halladas, modo, agotado, nuevoRecord, record, dificultad, haySiguiente, onOtraVez, onSiguiente }) {
   const botonRef = useRef(null);
   useEffect(() => botonRef.current?.focus(), []);
-  const estrellas = estrellasPorPistas(pistas);
+  const contrarreloj = modo === 'contrarreloj';
+  const estrellas = contrarreloj
+    ? halladas === palabras ? 3 : halladas >= palabras / 2 ? 2 : halladas > 0 ? 1 : 0
+    : estrellasPorPistas(pistas);
+  const textoRecord = (r) => (contrarreloj ? `${r.palabras} palabras` : formatoTiempo(r));
   const confeti = useMemo(
     () =>
       Array.from({ length: 90 }, (_, i) => ({
@@ -79,8 +93,10 @@ function Victoria({ tiempo, pistas, palabras, nuevoRecord, record, dificultad, h
         ))}
       </div>
       <div className="victoria__tarjeta">
-        <p className="victoria__nivel">Sopa de letras · {DIFICULTADES[dificultad].nombre}</p>
-        <h2 id="sopa-titulo-victoria">¡Sopa completada! 🎉</h2>
+        <p className="victoria__nivel">
+          Sopa de letras · {DIFICULTADES[dificultad].nombre} · {MODOS[modo].icono} {MODOS[modo].nombre}
+        </p>
+        <h2 id="sopa-titulo-victoria">{agotado ? '¡Se acabó el tiempo! ⏱' : '¡Sopa completada! 🎉'}</h2>
         <div className="victoria__estrellas" aria-label={`${estrellas} de 3 estrellas`}>
           {[1, 2, 3].map((n) => (
             <span key={n} className={n <= estrellas ? 'llena' : ''} style={{ '--n': n }}>
@@ -91,19 +107,19 @@ function Victoria({ tiempo, pistas, palabras, nuevoRecord, record, dificultad, h
         {nuevoRecord && <p className="victoria__record">🏆 ¡Nuevo récord!</p>}
         <dl className="victoria__datos">
           <div>
-            <dt>Tiempo</dt>
+            <dt>{contrarreloj ? 'Sobró' : 'Tiempo'}</dt>
             <dd>{formatoTiempo(tiempo)}</dd>
           </div>
           <div>
             <dt>Palabras</dt>
-            <dd>{palabras}</dd>
+            <dd>{contrarreloj ? `${halladas}/${palabras}` : palabras}</dd>
           </div>
           <div>
             <dt>Pistas</dt>
             <dd>{pistas}</dd>
           </div>
         </dl>
-        {record != null && !nuevoRecord && <p className="victoria__mejor">Tu récord en este nivel: {formatoTiempo(record)}</p>}
+        {record != null && !nuevoRecord && <p className="victoria__mejor">Tu récord en este nivel: {textoRecord(record)}</p>}
         <div className="victoria__botones">
           <button type="button" ref={botonRef} className="boton boton--principal" onClick={onOtraVez}>
             Otra sopa
@@ -122,7 +138,7 @@ function Victoria({ tiempo, pistas, palabras, nuevoRecord, record, dificultad, h
 // ---------- Juego ----------
 export default function SopaDeLetras() {
   const [tema, setTema] = useState(temaGuardado);
-  const [partida, setPartida] = useState(() => crearPartida(temaGuardado, difGuardada));
+  const [partida, setPartida] = useState(() => crearPartida(temaGuardado, difGuardada, modoGuardado));
   const [arrastre, setArrastre] = useState(null); // { inicio, fin, movio }
   const [ancla, setAncla] = useState(null); // inicio elegido con clic o teclado
   const [hover, setHover] = useState(null);
@@ -138,14 +154,21 @@ export default function SopaDeLetras() {
   const grillaRef = useRef(null);
   const arrastreRef = useRef(null);
 
-  const { sopa, dificultad } = partida;
+  const { sopa, dificultad, modo } = partida;
+  const contrarreloj = modo === 'contrarreloj';
+  const rompecraneos = modo === 'rompecraneos';
   const { tam } = sopa;
   const dif = DIFICULTADES[dificultad];
   const encontradasIds = useMemo(() => new Set(partida.encontradas.map((e) => e.id)), [partida.encontradas]);
   const colorDe = useMemo(() => Object.fromEntries(partida.encontradas.map((e) => [e.id, e.color])), [partida.encontradas]);
   const penal = partida.pistas * PENALIZACION;
-  const tiempo = partida.inicio ? (partida.fin ?? ahora) - partida.inicio + penal : penal;
-  const record = records[dificultad];
+  const restante = contrarreloj
+    ? Math.max(0, tiempoRestante({ ...partida, encontradas: partida.encontradas.length }, ahora, PENALIZACION))
+    : 0;
+  const tiempo = contrarreloj ? restante : partida.inicio ? (partida.fin ?? ahora) - partida.inicio + penal : penal;
+  const record = records[claveRecord(dificultad, modo)];
+  const textoRecord =
+    record == null ? '—' : contrarreloj ? (typeof record === 'object' ? `${record.palabras} pal.` : '—') : formatoTiempo(record);
 
   // Cronómetro
   useEffect(() => {
@@ -154,22 +177,40 @@ export default function SopaDeLetras() {
     return () => clearInterval(t);
   }, [partida.inicio, partida.fin]);
 
+  // Contrarreloj: cuando llega a cero se termina la partida
+  useEffect(() => {
+    if (!contrarreloj || !partida.inicio || partida.fin || restante > 0) return;
+    sonidos.fallo();
+    setMensaje('¡Se acabó el tiempo!');
+    setPartida((p) => (p.fin ? p : { ...p, fin: Date.now(), agotado: true }));
+  }, [contrarreloj, partida.inicio, partida.fin, restante]);
+
   // Preferencias
-  useEffect(() => guardar('sopa-prefs', { tema, dificultad }), [tema, dificultad]);
+  useEffect(() => guardar('sopa-prefs', { tema, dificultad, modo }), [tema, dificultad, modo]);
 
   // Al terminar: sonido y récord
   useEffect(() => {
     if (!partida.fin) return;
-    const total = partida.fin - partida.inicio + partida.pistas * PENALIZACION;
+    const clave = claveRecord(dificultad, modo);
+    const marca =
+      modo === 'contrarreloj'
+        ? {
+            palabras: partida.encontradas.length,
+            restante: Math.max(
+              0,
+              tiempoRestante({ ...partida, encontradas: partida.encontradas.length }, partida.fin, PENALIZACION)
+            ),
+          }
+        : partida.fin - partida.inicio + partida.pistas * PENALIZACION;
     const anterior = leer('sopa-records', {});
-    const esNuevo = anterior[dificultad] == null || total < anterior[dificultad];
+    const esNuevo = (modo !== 'contrarreloj' || marca.palabras > 0) && esMejor(marca, anterior[clave], modo);
     setNuevoRecord(esNuevo);
     if (esNuevo) {
-      const nuevos = { ...anterior, [dificultad]: total };
+      const nuevos = { ...anterior, [clave]: marca };
       setRecords(nuevos);
       guardar('sopa-records', nuevos);
     }
-    const t = setTimeout(sonidos.victoria, 350);
+    const t = partida.agotado ? null : setTimeout(sonidos.victoria, 350);
     return () => clearTimeout(t);
   }, [partida.fin]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -188,6 +229,7 @@ export default function SopaDeLetras() {
   const nueva = (cambios = {}) => {
     const t = cambios.tema ?? tema;
     const d = cambios.dificultad ?? dificultad;
+    const m = cambios.modo ?? modo;
     if (cambios.tema) setTema(cambios.tema);
     arrastreRef.current = null;
     setArrastre(null);
@@ -199,7 +241,7 @@ export default function SopaDeLetras() {
     setNuevoRecord(false);
     setCursor({ fila: 0, col: 0 });
     setMensaje('Nueva sopa de letras lista');
-    setPartida(crearPartida(t, d));
+    setPartida(crearPartida(t, d, m));
   };
 
   const arrancarReloj = () => {
@@ -225,7 +267,11 @@ export default function SopaDeLetras() {
     const encontradas = [...partida.encontradas, { id: p.id, inicio: a, fin: b, color }];
     const gano = encontradas.length === sopa.palabras.length;
     setRecien(p.id);
-    setMensaje(gano ? '¡Encontraste todas las palabras!' : `¡Encontraste ${p.texto}! Faltan ${sopa.palabras.length - encontradas.length}.`);
+    setMensaje(
+      gano
+        ? '¡Encontraste todas las palabras!'
+        : `¡Encontraste ${p.texto}!${contrarreloj ? ' +10 segundos.' : ''} Faltan ${sopa.palabras.length - encontradas.length}.`
+    );
     setPartida((prev) => ({ ...prev, encontradas, fin: gano ? Date.now() : null }));
   };
 
@@ -320,16 +366,43 @@ export default function SopaDeLetras() {
   };
 
   // ---------- Pista ----------
+  const textoCastigo = contrarreloj ? '−15 segundos' : '+15 segundos';
+
+  const senalar = (p) => {
+    setPista({ ...extremos(p).inicio, n: Date.now() });
+    setMensaje(
+      `Pista: busca ${rompecraneos ? 'esa palabra' : p.texto} empezando en la fila ${extremos(p).inicio.fila + 1}, columna ${
+        extremos(p).inicio.col + 1
+      }. ${textoCastigo}.`
+    );
+  };
+
+  // En Rompecráneos: 1.ª ayuda = primera letra en la lista, 2.ª = señalarla en la grilla
+  const ayudarCon = (p) => {
+    if (partida.fin || encontradasIds.has(p.id)) return;
+    arrancarReloj();
+    sonidos.racha();
+    const nivel = partida.ayudas[p.id] ?? 0;
+    if (rompecraneos && nivel === 0) {
+      setMensaje(`Pista: la palabra empieza por ${p.norm[0]}. ${textoCastigo}.`);
+    } else {
+      senalar(p);
+    }
+    setPartida((prev) => ({
+      ...prev,
+      pistas: prev.pistas + 1,
+      ayudas: { ...prev.ayudas, [p.id]: Math.min(2, nivel + 1) },
+    }));
+  };
+
   const darPista = () => {
     if (partida.fin) return;
     const faltan = sopa.palabras.filter((p) => !encontradasIds.has(p.id));
     if (!faltan.length) return;
-    const p = faltan[Math.floor(Math.random() * faltan.length)];
-    arrancarReloj();
-    sonidos.racha();
-    setPista({ ...extremos(p).inicio, n: Date.now() });
-    setMensaje(`Pista: busca la palabra que empieza en la fila ${extremos(p).inicio.fila + 1}, columna ${extremos(p).inicio.col + 1}. +15 segundos.`);
-    setPartida((prev) => ({ ...prev, pistas: prev.pistas + 1 }));
+    // primero las que todavía no tienen ayuda
+    const menor = Math.min(...faltan.map((p) => partida.ayudas[p.id] ?? 0));
+    const opciones = faltan.filter((p) => (partida.ayudas[p.id] ?? 0) === menor);
+    ayudarCon(opciones[Math.floor(Math.random() * opciones.length)]);
   };
 
   // Línea que se dibuja mientras eliges
@@ -365,6 +438,21 @@ export default function SopaDeLetras() {
           ))}
         </div>
 
+        <div className="selector sopa-modos" role="group" aria-label="Modo de juego">
+          {ORDEN_MODOS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={`selector__opcion ${modo === id ? 'activa' : ''}`}
+              aria-pressed={modo === id}
+              title={MODOS[id].descripcion}
+              onClick={() => nueva({ modo: id })}
+            >
+              <span aria-hidden="true">{MODOS[id].icono}</span> {MODOS[id].nombre}
+            </button>
+          ))}
+        </div>
+
         <label className="sopa-tema">
           <span>Tema</span>
           <select value={tema} onChange={(e) => nueva({ tema: e.target.value })}>
@@ -380,8 +468,10 @@ export default function SopaDeLetras() {
 
       <section className="sopa-marcador" aria-label="Marcador">
         <div className="dato">
-          <span className="dato__titulo">Tiempo</span>
-          <span className="dato__valor">{formatoTiempo(tiempo)}</span>
+          <span className="dato__titulo">{contrarreloj ? 'Quedan' : 'Tiempo'}</span>
+          <span className={`dato__valor ${contrarreloj && partida.inicio && restante < 20000 ? 'sopa-urgente' : ''}`}>
+            {formatoTiempo(tiempo)}
+          </span>
         </div>
         <div className="dato">
           <span className="dato__titulo">Palabras</span>
@@ -395,7 +485,7 @@ export default function SopaDeLetras() {
         </div>
         <div className="dato">
           <span className="dato__titulo">🏆 Récord</span>
-          <span className="dato__valor">{record != null ? formatoTiempo(record) : '—'}</span>
+          <span className="dato__valor">{textoRecord}</span>
         </div>
       </section>
 
@@ -408,7 +498,9 @@ export default function SopaDeLetras() {
             </div>
             <p className="sopa-hoja__tema">
               <span aria-hidden="true">{tema_.icono}</span> {tema_.nombre}
-              <small>{dif.nombre}</small>
+              <small>
+                {dif.nombre} · {MODOS[modo].nombre}
+              </small>
             </p>
           </header>
 
@@ -490,12 +582,46 @@ export default function SopaDeLetras() {
             </div>
 
             <aside className="sopa-lista-caja">
-              <h3>Palabras a buscar</h3>
-              <ul className="sopa-lista">
+              <h3>{rompecraneos ? '¿Qué palabra es?' : 'Palabras a buscar'}</h3>
+              {rompecraneos && <p className="sopa-instruccion">Lee la pista, adivina la palabra y búscala en la sopa.</p>}
+              <ul className={`sopa-lista ${rompecraneos ? 'sopa-lista--definiciones' : ''}`}>
                 {sopa.palabras.map((p) => {
                   const hallada = encontradasIds.has(p.id);
+                  const clases = `${hallada ? 'sopa-lista__hallada' : ''} ${recien === p.id ? 'sopa-lista__recien' : ''}`;
+                  if (rompecraneos) {
+                    const ayuda = partida.ayudas[p.id] ?? 0;
+                    return (
+                      <li key={p.id} className={`sopa-def ${clases}`}>
+                        <span className="sopa-lista__marca" style={hallada ? { background: colorDe[p.id] } : undefined} aria-hidden="true" />
+                        <span className="sopa-def__cuerpo">
+                          <span className="sopa-def__texto">{p.definicion}</span>
+                          {hallada ? (
+                            <span className="sopa-def__palabra">{p.texto}</span>
+                          ) : (
+                            <span
+                              className="sopa-def__mascara"
+                              aria-label={`${p.norm.length} letras${ayuda ? `, empieza por ${p.norm[0]}` : ''}`}
+                            >
+                              {mascara(p.norm, ayuda ? 1 : 0)}
+                            </span>
+                          )}
+                        </span>
+                        {!hallada && !partida.fin && (
+                          <button
+                            type="button"
+                            className="sopa-def__ayuda"
+                            onClick={() => ayudarCon(p)}
+                            aria-label={ayuda ? 'Señalar dónde empieza esta palabra' : 'Ver la primera letra de esta palabra'}
+                            title={ayuda ? 'Señalar en la sopa (+15 s)' : 'Ver primera letra (+15 s)'}
+                          >
+                            💡
+                          </button>
+                        )}
+                      </li>
+                    );
+                  }
                   return (
-                    <li key={p.id} className={`${hallada ? 'sopa-lista__hallada' : ''} ${recien === p.id ? 'sopa-lista__recien' : ''}`}>
+                    <li key={p.id} className={clases}>
                       <span className="sopa-lista__marca" style={hallada ? { background: colorDe[p.id] } : undefined} aria-hidden="true" />
                       <span className="sopa-lista__texto">{p.texto}</span>
                       {hallada && <span className="sopa-sr"> (encontrada)</span>}
@@ -519,7 +645,7 @@ export default function SopaDeLetras() {
             ↻ Nueva sopa
           </button>
           <button type="button" className="boton" onClick={darPista} disabled={!!partida.fin}>
-            💡 Pista <small>(+15 s)</small>
+            💡 Pista <small>({contrarreloj ? '−15 s' : '+15 s'})</small>
           </button>
         </div>
         <p>Arrastra sobre las letras, o toca la primera y luego la última. Con teclado: flechas y Enter.</p>
@@ -534,6 +660,9 @@ export default function SopaDeLetras() {
           tiempo={tiempo}
           pistas={partida.pistas}
           palabras={sopa.palabras.length}
+          halladas={partida.encontradas.length}
+          modo={modo}
+          agotado={partida.agotado}
           nuevoRecord={nuevoRecord}
           record={record}
           dificultad={dificultad}

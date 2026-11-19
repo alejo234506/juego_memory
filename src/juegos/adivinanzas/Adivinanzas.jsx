@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { ADIVINANZAS, CATEGORIAS } from './datos.js';
+import { ADIVINANZAS, CATEGORIAS, DIFICULTADES } from './datos.js';
 import {
   PREGUNTAS_POR_RONDA,
   SEGUNDOS_CONTRARRELOJ,
   INTENTOS,
   PUNTOS,
+  GENIO,
+  filtrar,
+  pistasMaximas,
+  claveRecord,
   crearRonda,
   opcionesPara,
   esCorrecta,
@@ -28,6 +32,8 @@ const estadoBase = {
   categoria: prefs.categoria === 'todas' || prefs.categoria in CATEGORIAS ? prefs.categoria : 'todas',
   contrarreloj: !!prefs.contrarreloj,
   siempreOpciones: !!prefs.siempreOpciones,
+  dificultad: prefs.dificultad === 'todas' || prefs.dificultad in DIFICULTADES ? prefs.dificultad : 'todas',
+  modo: prefs.modo === 'genio' ? 'genio' : 'normal', // 'normal' | 'genio'
   ronda: [],
   opcionesRonda: [],
   indice: 0,
@@ -55,12 +61,21 @@ const Adivinanzas = () => {
   const opciones = s.opcionesRonda[s.indice] ?? [];
   const restante = s.limite ? Math.max(0, (s.limite - ahora) / 1000) : 0;
   const aciertos = s.resultados.filter((r) => r.acerto).length;
-  const record = records[s.categoria];
+  const clave = claveRecord(s);
+  const record = records[clave];
+  const genio = s.modo === 'genio';
+  const maxPistas = pistasMaximas(s.modo);
 
   // Guardar preferencias
   useEffect(() => {
-    guardar(CLAVE_PREFS, { categoria: s.categoria, contrarreloj: s.contrarreloj, siempreOpciones: s.siempreOpciones });
-  }, [s.categoria, s.contrarreloj, s.siempreOpciones]);
+    guardar(CLAVE_PREFS, {
+      categoria: s.categoria,
+      contrarreloj: s.contrarreloj,
+      siempreOpciones: s.siempreOpciones,
+      dificultad: s.dificultad,
+      modo: s.modo,
+    });
+  }, [s.categoria, s.contrarreloj, s.siempreOpciones, s.dificultad, s.modo]);
 
   // Cronómetro del contrarreloj
   useEffect(() => {
@@ -113,11 +128,11 @@ const Adivinanzas = () => {
   // Fin de ronda: récord y fanfarria
   useEffect(() => {
     if (s.fase !== 'resumen') return;
-    const anterior = records[s.categoria];
+    const anterior = records[clave];
     const esNuevo = !anterior || s.puntos > anterior.puntos;
     setNuevoRecord(esNuevo && s.puntos > 0);
     if (esNuevo && s.puntos > 0) {
-      const nuevos = { ...records, [s.categoria]: { puntos: s.puntos, aciertos } };
+      const nuevos = { ...records, [clave]: { puntos: s.puntos, aciertos } };
       setRecords(nuevos);
       guardar(CLAVE_RECORDS, nuevos);
     }
@@ -148,7 +163,16 @@ const Adivinanzas = () => {
   // ================================================================ INICIO
   if (s.fase === 'inicio') {
     const categorias = [['todas', { nombre: 'Todas', icono: '🎲', color: '#ffcf4a' }], ...Object.entries(CATEGORIAS)];
-    const cuantas = (id) => (id === 'todas' ? ADIVINANZAS.length : ADIVINANZAS.filter((x) => x.categoria === id).length);
+    const cuantas = (id) => filtrar(ADIVINANZAS, id, s.dificultad).length;
+    const disponibles = genio
+      ? ADIVINANZAS.filter((x) => GENIO.dificultades.includes(x.dificultad)).length
+      : cuantas(s.categoria);
+    const dificultades = [['todas', { nombre: 'Todas', cerebros: 0 }], ...Object.entries(DIFICULTADES)];
+    const nombreRecord = genio
+      ? 'el Desafío del genio'
+      : `${s.categoria === 'todas' ? 'Todas' : CATEGORIAS[s.categoria].nombre}${
+          s.dificultad !== 'todas' ? ` · ${DIFICULTADES[s.dificultad].nombre}` : ''
+        }`;
     return (
       <div className="adv">
         <section className="adv-portada">
@@ -157,10 +181,71 @@ const Adivinanzas = () => {
           <h2 className="adv-portada__titulo">Adivina, adivinador… 🤔</h2>
           <p className="adv-portada__texto">
             Lee cada adivinanza y escribe la respuesta. Tienes {INTENTOS} intentos, pistas si te atascas y opciones si de
-            plano no sale. ¡Cada ronda trae {PREGUNTAS_POR_RONDA} adivinanzas!
+            plano no sale. ¡Cada ronda trae {PREGUNTAS_POR_RONDA} adivinanzas! Hay {ADIVINANZAS.length} en total, desde
+            facilitas hasta rompecráneos para genios.
           </p>
         </section>
 
+        <section className="adv-bloque" aria-labelledby="adv-titulo-modo">
+          <h3 id="adv-titulo-modo" className="adv-bloque__titulo">
+            ¿Cómo quieres jugar?
+          </h3>
+          <div className="adv-modos">
+            <button
+              type="button"
+              className={`adv-modo ${!genio ? 'adv-modo--activo' : ''}`}
+              aria-pressed={!genio}
+              onClick={() => despachar({ type: 'CONFIGURAR', cambios: { modo: 'normal' } })}
+            >
+              <span className="adv-modo__icono" aria-hidden="true">
+                🎯
+              </span>
+              <strong>Ronda normal</strong>
+              <small>Tú eliges la categoría y la dificultad</small>
+            </button>
+            <button
+              type="button"
+              className={`adv-modo adv-modo--genio ${genio ? 'adv-modo--activo' : ''}`}
+              aria-pressed={genio}
+              onClick={() => despachar({ type: 'CONFIGURAR', cambios: { modo: 'genio' } })}
+            >
+              <span className="adv-modo__icono" aria-hidden="true">
+                🧠
+              </span>
+              <strong>Desafío del genio</strong>
+              <small>
+                {PREGUNTAS_POR_RONDA} difíciles y de genio · sin opciones · {GENIO.pistasMax} pista como máximo
+              </small>
+            </button>
+          </div>
+        </section>
+
+        {!genio && (
+          <section className="adv-bloque" aria-labelledby="adv-titulo-dif">
+            <h3 id="adv-titulo-dif" className="adv-bloque__titulo">
+              Dificultad
+            </h3>
+            <div className="adv-dificultades">
+              {dificultades.map(([id, d]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`adv-dificultad ${s.dificultad === id ? 'adv-dificultad--activa' : ''}`}
+                  aria-pressed={s.dificultad === id}
+                  onClick={() => despachar({ type: 'CONFIGURAR', cambios: { dificultad: id } })}
+                >
+                  <span className="adv-dificultad__nombre">{d.nombre}</span>
+                  <span className="adv-cerebros" aria-hidden="true">
+                    {d.cerebros ? '🧠'.repeat(d.cerebros) : '🎲'}
+                  </span>
+                  <small>{id === 'todas' ? 'de todo un poco' : `${d.puntos} pts c/u`}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {!genio && (
         <section className="adv-bloque" aria-labelledby="adv-titulo-cat">
           <h3 id="adv-titulo-cat" className="adv-bloque__titulo">
             Elige una categoría
@@ -184,6 +269,7 @@ const Adivinanzas = () => {
             ))}
           </div>
         </section>
+        )}
 
         <section className="adv-bloque adv-ajustes" aria-label="Ajustes">
           <label className="adv-interruptor">
@@ -198,6 +284,7 @@ const Adivinanzas = () => {
               <small>{SEGUNDOS_CONTRARRELOJ} s por adivinanza · +{PUNTOS.porSegundo} pts por segundo que sobre</small>
             </span>
           </label>
+          {!genio && (
           <label className="adv-interruptor">
             <input
               type="checkbox"
@@ -210,22 +297,37 @@ const Adivinanzas = () => {
               <small>Más fácil: eliges entre 4 · −{PUNTOS.opciones} pts por adivinanza</small>
             </span>
           </label>
+          )}
         </section>
 
         <div className="adv-arranque">
           <p className="adv-record">
-            🏆 Récord en {s.categoria === 'todas' ? 'Todas' : CATEGORIAS[s.categoria].nombre}:{' '}
+            🏆 Récord en {nombreRecord}:{' '}
             <strong>{record ? `${record.puntos} pts (${record.aciertos}/${PREGUNTAS_POR_RONDA})` : 'todavía no hay'}</strong>
           </p>
-          <button type="button" className="boton boton--principal adv-empezar" onClick={empezar}>
-            ¡A adivinar! →
+          {disponibles === 0 && (
+            <p className="adv-aviso-vacio">No hay adivinanzas con esa combinación. Prueba otra dificultad.</p>
+          )}
+          <button
+            type="button"
+            className="boton boton--principal adv-empezar"
+            onClick={empezar}
+            disabled={disponibles === 0}
+          >
+            {genio ? '¡Acepto el desafío! 🧠' : '¡A adivinar! →'}
           </button>
         </div>
 
         <details className="adv-reglas">
           <summary>¿Cómo se ganan los puntos?</summary>
           <ul>
-            <li>Cada acierto vale {PUNTOS.base} puntos.</li>
+            <li>
+              Cada acierto vale según su dificultad:{' '}
+              {Object.values(DIFICULTADES)
+                .map((d) => `${d.nombre} ${d.puntos}`)
+                .join(' · ')}
+              .
+            </li>
             <li>
               Cada pista resta {PUNTOS.pista}, ver opciones resta {PUNTOS.opciones} y cada intento fallido resta{' '}
               {PUNTOS.intentoFallido} (un acierto nunca vale menos de {PUNTOS.minimo}).
@@ -306,7 +408,16 @@ const Adivinanzas = () => {
             <span className="adv-etiqueta">
               {cat.icono} {cat.nombre}
             </span>
-            <span className="adv-carta__numero">N.º {s.indice + 1}</span>
+            <span className="adv-carta__numero">
+              <span
+                className="adv-cerebros"
+                title={DIFICULTADES[actual?.dificultad]?.nombre}
+                aria-label={`Dificultad: ${DIFICULTADES[actual?.dificultad]?.nombre}`}
+              >
+                {'🧠'.repeat(DIFICULTADES[actual?.dificultad]?.cerebros ?? 1)}
+              </span>{' '}
+              N.º {s.indice + 1}
+            </span>
           </header>
 
           <p className="adv-carta__texto">
@@ -314,7 +425,7 @@ const Adivinanzas = () => {
             {actual?.texto}
             <span aria-hidden="true">”</span>
           </p>
-          <p className="adv-carta__pregunta">¿Qué es?</p>
+          {!/\?\s*$/.test(actual?.texto ?? '') && <p className="adv-carta__pregunta">¿Qué es?</p>}
 
           {s.p.pistas > 0 && (
             <div className="adv-pistas">
@@ -404,10 +515,10 @@ const Adivinanzas = () => {
 
         {pensando && (
           <div className="adv-herramientas">
-            <button type="button" className="boton" onClick={pedirPista} disabled={s.p.pistas >= 2}>
-              💡 Pista {s.p.pistas < 2 ? `(−${PUNTOS.pista})` : '(no quedan)'}
+            <button type="button" className="boton" onClick={pedirPista} disabled={s.p.pistas >= maxPistas}>
+              💡 Pista {s.p.pistas < maxPistas ? `(−${PUNTOS.pista})` : '(no quedan)'}
             </button>
-            {!s.p.conOpciones && (
+            {!s.p.conOpciones && !genio && (
               <button type="button" className="boton" onClick={verOpciones}>
                 🔢 Ver opciones (−{PUNTOS.opciones})
               </button>
@@ -432,6 +543,11 @@ const Adivinanzas = () => {
             ) : (
               <p className="adv-resultado__titulo">
                 {mensajeFallo} La respuesta era <strong>{capitalizar(actual.respuesta)}</strong>.
+              </p>
+            )}
+            {actual.explicacion && (
+              <p className="adv-explicacion">
+                <span aria-hidden="true">💡</span> <strong>¿Por qué?</strong> {actual.explicacion}
               </p>
             )}
             <button
@@ -461,7 +577,13 @@ const Adivinanzas = () => {
           mejorRacha={s.mejorRacha}
           nuevoRecord={nuevoRecord}
           record={record}
-          categoria={s.categoria === 'todas' ? 'Todas' : CATEGORIAS[s.categoria].nombre}
+          categoria={
+            genio
+              ? 'Desafío del genio 🧠'
+              : `${s.categoria === 'todas' ? 'Todas' : CATEGORIAS[s.categoria].nombre}${
+                  s.dificultad !== 'todas' ? ` · ${DIFICULTADES[s.dificultad].nombre}` : ''
+                }`
+          }
           onOtraVez={empezar}
           onMenu={() => despachar({ type: 'MENU' })}
         />

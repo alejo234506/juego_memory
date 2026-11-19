@@ -1,0 +1,543 @@
+/* =========================================================
+   CÓDIGO SECRETO — tablero de madera con huecos y gemas
+   ========================================================= */
+.cod {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  --cod-madera-1: #8a5a32;
+  --cod-madera-2: #6b4223;
+  --cod-madera-3: #4e2f17;
+  --cod-hueco: clamp(30px, 8.4vw, 46px);
+}
+
+:root[data-theme='oscuro'] .cod {
+  --cod-madera-1: #5b3b22;
+  --cod-madera-2: #452b17;
+  --cod-madera-3: #2e1c0e;
+}
+
+.cod-marcador {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.cod-mesa {
+  place-items: start center;
+}
+
+.cod-juego {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: clamp(14px, 3vw, 30px);
+  width: 100%;
+}
+
+/* ----- Tablero de madera ----- */
+.cod-tablero {
+  position: relative;
+  padding: 14px 14px 16px;
+  border-radius: 18px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02 .4' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .1 0 0 0 0 .03 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23v)'/%3E%3C/svg%3E"),
+    linear-gradient(90deg, var(--cod-madera-1), var(--cod-madera-2) 40%, var(--cod-madera-1) 70%, var(--cod-madera-3));
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+    0 4px 0 var(--cod-madera-3),
+    0 22px 30px -12px rgba(0, 0, 0, 0.75);
+}
+
+.cod-filas {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.cod-fila,
+.cod-secreto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 12px;
+}
+
+.cod-fila__numero {
+  width: 1.6em;
+  text-align: center;
+  font-weight: 700;
+  color: rgba(255, 240, 210, 0.55);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.cod-fila__huecos {
+  display: flex;
+  gap: clamp(4px, 1.3vw, 8px);
+}
+
+/* Hueco tallado en la madera */
+.cod-hueco {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--cod-hueco);
+  height: var(--cod-hueco);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.25) 70%);
+  box-shadow:
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+button.cod-hueco {
+  cursor: pointer;
+}
+
+.cod-fila--activa {
+  background: rgba(255, 220, 140, 0.16);
+  box-shadow: inset 0 0 0 2px rgba(255, 207, 74, 0.55);
+}
+
+.cod-fila--activa .cod-fila__numero {
+  color: var(--acento);
+}
+
+.cod-hueco--activo {
+  box-shadow:
+    inset 0 3px 6px rgba(0, 0, 0, 0.6),
+    0 0 0 3px var(--acento),
+    0 0 14px rgba(255, 207, 74, 0.6);
+}
+
+.cod-hueco--destino:not(.cod-hueco--lleno) {
+  animation: cod-latir 0.9s ease-in-out infinite;
+}
+
+.cod-fila--vacia {
+  opacity: 0.55;
+}
+
+.cod-fila--sacudir {
+  animation: cod-sacudir 0.4s;
+}
+
+/* ----- Clavijas de pista ----- */
+.cod-pistas {
+  display: grid;
+  grid-template-columns: repeat(var(--cols-pistas), 1fr);
+  gap: 3px;
+  margin-left: auto;
+  padding: 5px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.cod-clavija {
+  display: inline-block;
+  width: clamp(9px, 2.4vw, 13px);
+  height: clamp(9px, 2.4vw, 13px);
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.cod-clavija--vacia {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.cod-clavija--negra {
+  background: radial-gradient(circle at 35% 30%, #6b6b78, #15151a 70%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 0 1.5px #e8d9b5;
+}
+
+.cod-clavija--blanca {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #d8d2c4 70%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.cod-fila--hecha .cod-clavija:not(.cod-clavija--vacia) {
+  animation: cod-clavar 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.cod-fila--hecha .cod-clavija:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.cod-fila--hecha .cod-clavija:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.cod-fila--hecha .cod-clavija:nth-child(4) {
+  animation-delay: 0.18s;
+}
+
+.cod-fila--hecha .cod-clavija:nth-child(5) {
+  animation-delay: 0.24s;
+}
+
+.cod-fila--hecha .cod-clavija:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+/* Las filas viejas no vuelven a animarse: solo la última */
+.cod-fila--hecha:not(:last-of-type) .cod-clavija {
+  animation: none;
+}
+
+/* ----- Fichas ----- */
+.cod-ficha {
+  display: grid;
+  place-items: center;
+  width: 82%;
+  height: 82%;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: cod-poner 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cod-ficha--gema {
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 32%),
+    radial-gradient(circle at 60% 75%, rgba(0, 0, 0, 0.35), transparent 60%),
+    var(--gema);
+  box-shadow:
+    inset 0 -3px 5px rgba(0, 0, 0, 0.35),
+    inset 0 2px 3px rgba(255, 255, 255, 0.4),
+    0 3px 5px rgba(0, 0, 0, 0.55);
+}
+
+.cod-ficha__forma {
+  font-size: calc(var(--cod-hueco) * 0.38);
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.cod-ficha--numero {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: calc(var(--cod-hueco) * 0.5);
+  color: var(--tinta);
+  background: radial-gradient(circle at 35% 30%, #fffaf0, #e2d6bd 75%);
+  box-shadow:
+    inset 0 -2px 4px rgba(0, 0, 0, 0.25),
+    0 3px 5px rgba(0, 0, 0, 0.55);
+}
+
+.cod-ficha--pequena {
+  width: 70%;
+  height: 70%;
+}
+
+/* ----- Código secreto con tapa ----- */
+.cod-secreto {
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.cod-incognita {
+  color: rgba(255, 240, 210, 0.35);
+  font-weight: 700;
+}
+
+.cod-secreto__tapa {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  font-size: 0.85rem;
+  color: rgba(255, 236, 200, 0.85);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, var(--cod-madera-1), var(--cod-madera-3));
+  border-radius: 12px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 0.7s cubic-bezier(0.5, -0.3, 0.3, 1.3);
+}
+
+.cod-secreto--abierto .cod-secreto__tapa {
+  transform: translateY(-110%);
+}
+
+/* ----- Panel lateral ----- */
+.cod-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(100%, 290px);
+}
+
+.cod-bandeja {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.12), transparent 70%),
+    linear-gradient(180deg, var(--cod-madera-2), var(--cod-madera-3));
+  box-shadow:
+    inset 0 3px 8px rgba(0, 0, 0, 0.55),
+    0 2px 0 rgba(255, 255, 255, 0.12);
+}
+
+.cod-bandeja__ficha {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  --cod-hueco: clamp(40px, 11vw, 54px);
+  transition: transform 0.15s;
+  touch-action: manipulation;
+}
+
+.cod-bandeja__ficha .cod-ficha {
+  width: 88%;
+  height: 88%;
+  animation: none;
+}
+
+.cod-bandeja__ficha:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.08);
+}
+
+.cod-bandeja__ficha:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.cod-bandeja__ficha[draggable='true'] {
+  cursor: grab;
+}
+
+.cod-bandeja__ficha--usada {
+  opacity: 0.35;
+}
+
+.cod-bandeja__tecla {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--tinta);
+  background: var(--papel);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.cod-bandeja__tecla:empty {
+  display: none;
+}
+
+.cod-acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cod-acciones__fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cod-acciones .boton {
+  width: 100%;
+}
+
+.cod-acciones .boton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cod-comprobar {
+  font-size: 1.1rem;
+}
+
+.cod-aviso {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 93, 108, 0.2);
+  border: 1px solid rgba(255, 93, 108, 0.45);
+  font-size: 0.92rem;
+  animation: cod-poner 0.25s ease-out;
+}
+
+.cod-ayuda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-borde);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.cod-ayuda input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--acento);
+}
+
+.cod-posibles {
+  padding: 10px 12px;
+  border-radius: 4px;
+  color: var(--tinta);
+  background: linear-gradient(180deg, var(--papel), var(--papel-2));
+  box-shadow: 0 6px 12px -6px rgba(0, 0, 0, 0.6);
+  transform: rotate(-1deg);
+  font-weight: 600;
+}
+
+.cod-reglas {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-borde);
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.cod-reglas p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cod-reglas__nota {
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+
+/* ----- Pantalla final ----- */
+.cod-final__codigo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 12px auto;
+  padding: 10px 14px;
+  border-radius: 14px;
+  width: fit-content;
+  background: linear-gradient(90deg, #8a5a32, #6b4223);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  --cod-hueco: 40px;
+}
+
+.cod-final__etiqueta {
+  color: #ffe9c4;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.cod-final__fichas {
+  display: flex;
+  gap: 6px;
+}
+
+.cod-final__fichas .cod-hueco .cod-ficha {
+  animation: cod-poner 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cod-poner {
+  from {
+    transform: scale(0.3) translateY(-10px);
+    opacity: 0;
+  }
+}
+
+@keyframes cod-clavar {
+  from {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes cod-sacudir {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes cod-latir {
+  50% {
+    box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(255, 207, 74, 0.7);
+  }
+}
+
+/* ----- Celular ----- */
+@media (max-width: 640px) {
+  .cod-marcador {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cod-marcador .dato--record {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .cod-tablero {
+    padding: 10px 8px 12px;
+  }
+
+  .cod-fila,
+  .cod-secreto {
+    gap: 6px;
+    padding: 4px;
+  }
+
+  .cod-fila__numero {
+    width: 1.2em;
+    font-size: 0.8rem;
+  }
+
+  .cod-panel {
+    width: 100%;
+  }
+
+  .cod-bandeja {
+    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  }
+}
+
+/* Con 6 huecos en pantallas muy angostas, achicamos los huecos */
+@media (max-width: 400px) {
+  .cod {
+    --cod-hueco: 30px;
+  }
+
+  .cod-tablero--6 {
+    --cod-hueco: 27px;
+  }
+}

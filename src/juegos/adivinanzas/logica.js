@@ -1,12 +1,15 @@
 // Reglas del juego de adivinanzas (funciones puras, sin React).
-import { ADIVINANZAS } from './datos.js';
+import { ADIVINANZAS, DIFICULTADES } from './datos.js';
 
 export const PREGUNTAS_POR_RONDA = 10;
 export const SEGUNDOS_CONTRARRELOJ = 30;
 export const INTENTOS = 3;
 
+// Desafío del genio: solo difíciles y de genio, sin opciones y con 1 pista como máximo
+export const GENIO = { pistasMax: 1, dificultades: ['dificil', 'genio'] };
+
 export const PUNTOS = {
-  base: 100,
+  base: 100, // base de una fácil; las más difíciles valen más (ver DIFICULTADES)
   pista: 25, // se resta por cada pista usada
   opciones: 40, // se resta si pide ver las opciones
   intentoFallido: 10, // se resta por cada intento escrito que falle
@@ -65,10 +68,36 @@ export function barajar(lista, aleatorio = Math.random) {
   return copia;
 }
 
-/** Elige las adivinanzas de una ronda ('todas' o el id de una categoría). */
-export function crearRonda(adivinanzas, categoria = 'todas', cantidad = PREGUNTAS_POR_RONDA, aleatorio = Math.random) {
-  const disponibles = categoria === 'todas' ? adivinanzas : adivinanzas.filter((x) => x.categoria === categoria);
-  return barajar(disponibles, aleatorio).slice(0, cantidad);
+/** Puntos base según la dificultad. */
+export function puntosBase(dificultad) {
+  return DIFICULTADES[dificultad]?.puntos ?? PUNTOS.base;
+}
+
+/** Adivinanzas de una categoría y una dificultad ('todas' = sin filtro). */
+export function filtrar(adivinanzas, categoria = 'todas', dificultad = 'todas') {
+  return adivinanzas.filter(
+    (x) => (categoria === 'todas' || x.categoria === categoria) && (dificultad === 'todas' || x.dificultad === dificultad)
+  );
+}
+
+/** Elige las adivinanzas de una ronda según la categoría y la dificultad. */
+export function crearRonda(adivinanzas, categoria = 'todas', cantidad = PREGUNTAS_POR_RONDA, aleatorio = Math.random, dificultad = 'todas') {
+  return barajar(filtrar(adivinanzas, categoria, dificultad), aleatorio).slice(0, cantidad);
+}
+
+/** Ronda del Desafío del genio: solo difíciles y de genio, de todas las categorías. */
+export function crearRondaGenio(adivinanzas, cantidad = PREGUNTAS_POR_RONDA, aleatorio = Math.random) {
+  const duras = adivinanzas.filter((x) => GENIO.dificultades.includes(x.dificultad));
+  return barajar(duras, aleatorio).slice(0, cantidad);
+}
+
+/** Cuántas pistas se pueden pedir en la partida. */
+export const pistasMaximas = (modo) => (modo === 'genio' ? GENIO.pistasMax : 2);
+
+/** Clave del récord: cada combinación de categoría y dificultad tiene el suyo. */
+export function claveRecord({ modo, categoria, dificultad }) {
+  if (modo === 'genio') return 'genio';
+  return dificultad && dificultad !== 'todas' ? `${categoria}|${dificultad}` : categoria;
 }
 
 /**
@@ -94,8 +123,8 @@ export function opcionesPara(adivinanza, todas, aleatorio = Math.random) {
 }
 
 /** Puntos de un acierto según las ayudas usadas, la racha y el tiempo. */
-export function calcularPuntos({ pistas = 0, conOpciones = false, fallos = 0, racha = 1, segundosRestantes = 0, contrarreloj = false }) {
-  let puntos = PUNTOS.base - pistas * PUNTOS.pista - fallos * PUNTOS.intentoFallido;
+export function calcularPuntos({ dificultad = 'facil', pistas = 0, conOpciones = false, fallos = 0, racha = 1, segundosRestantes = 0, contrarreloj = false }) {
+  let puntos = puntosBase(dificultad) - pistas * PUNTOS.pista - fallos * PUNTOS.intentoFallido;
   if (conOpciones) puntos -= PUNTOS.opciones;
   puntos = Math.max(PUNTOS.minimo, puntos);
   const bonusRacha = Math.min(PUNTOS.rachaMax, Math.max(0, racha - 1) * PUNTOS.rachaPaso);
@@ -134,6 +163,7 @@ function cerrarPregunta(s, acerto, motivo, extra = {}) {
   const racha = acerto ? s.racha + 1 : 0;
   const ganancia = acerto
     ? calcularPuntos({
+        dificultad: actual.dificultad,
         pistas: s.p.pistas,
         conOpciones: s.p.conOpciones,
         fallos: s.p.fallos,
@@ -161,7 +191,9 @@ export function reducer(s, accion) {
     case 'CONFIGURAR':
       return { ...s, ...accion.cambios };
     case 'EMPEZAR': {
-      const ronda = crearRonda(ADIVINANZAS, s.categoria);
+      const genio = s.modo === 'genio';
+      const ronda = genio ? crearRondaGenio(ADIVINANZAS) : crearRonda(ADIVINANZAS, s.categoria, PREGUNTAS_POR_RONDA, Math.random, s.dificultad ?? 'todas');
+      if (!ronda.length) return s;
       return {
         ...s,
         fase: 'jugando',
@@ -173,14 +205,14 @@ export function reducer(s, accion) {
         mejorRacha: 0,
         resultados: [],
         limite: s.contrarreloj ? accion.ahora + SEGUNDOS_CONTRARRELOJ * 1000 : null,
-        p: preguntaNueva(s.siempreOpciones),
+        p: preguntaNueva(!genio && s.siempreOpciones),
       };
     }
     case 'PISTA':
-      if (!pensando || s.p.pistas >= 2) return s;
+      if (!pensando || s.p.pistas >= pistasMaximas(s.modo)) return s;
       return { ...s, p: { ...s.p, pistas: s.p.pistas + 1 } };
     case 'VER_OPCIONES':
-      if (!pensando || s.p.conOpciones) return s;
+      if (!pensando || s.p.conOpciones || s.modo === 'genio') return s;
       return { ...s, p: { ...s.p, conOpciones: true } };
     case 'RESPONDER': {
       if (!pensando || s.p.conOpciones || !accion.texto.trim()) return s;
@@ -205,7 +237,7 @@ export function reducer(s, accion) {
         ...s,
         indice: s.indice + 1,
         limite: s.contrarreloj ? accion.ahora + SEGUNDOS_CONTRARRELOJ * 1000 : null,
-        p: preguntaNueva(s.siempreOpciones),
+        p: preguntaNueva(s.modo !== 'genio' && s.siempreOpciones),
       };
     }
     case 'MENU':

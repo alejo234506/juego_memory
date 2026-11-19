@@ -314,3 +314,83 @@
     transition: none !important;
   }
 }
+
+/* =========================================================
+   Selector de dibujos y ayuda
+   ========================================================= */
+.rc-dibujos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.rc-selector-dibujos {
+  flex-wrap: wrap;
+}
+
+.rc-ayuda {
+  border: 1px solid var(--panel-borde);
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.rc-numero--oculto {
+  display: none;
+}
+
+/* =========================================================
+   Modo "Fichas giradas"
+   ========================================================= */
+.rc-ficha--girable {
+  cursor: pointer;
+}
+
+.rc-ficha__cara--giro {
+  transform: rotate(var(--giro));
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.15s, filter 0.2s;
+}
+
+.rc-tablero--girar .rc-ficha--girable:hover .rc-ficha__cara {
+  transform: rotate(var(--giro)) scale(1.03);
+  filter: brightness(1.07);
+}
+
+.rc-tablero--girar .rc-ficha:active .rc-ficha__cara {
+  transform: rotate(var(--giro)) scale(0.95);
+}
+
+/* Ficha elegida con el teclado */
+.rc-ficha--cursor .rc-ficha__cara {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/* Las fichas giradas que ya están derechas brillan un poco */
+.rc-tablero--girar .rc-ficha--correcta .rc-ficha__cara {
+  filter: saturate(1.1);
+}
+
+.rc-tablero--girar.rc-tablero--armado .rc-ficha__cara {
+  animation: rc-brillo 0.6s ease both;
+  animation-delay: calc((var(--x) + var(--y)) * 40ms);
+}
+
+/* Tablero 6×6: números un poco más pequeños */
+@media (max-width: 640px) {
+  .rc-dibujos {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rc-selector-dibujos .selector__opcion {
+    flex: 1 1 30%;
+    font-size: 0.82rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-ficha__cara--giro {
+    transition: none !important;
+  }
+}

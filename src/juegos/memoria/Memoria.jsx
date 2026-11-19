@@ -5,21 +5,29 @@ import {
   NIVELES,
   ORDEN_NIVELES,
   MAZOS,
+  MODOS,
+  modoValido,
+  dimensiones,
   reducer,
   estadoInicial,
   calcularEstrellas,
+  claveRecord,
   formatoTiempo,
   esMejorMarca,
 } from '../../logica/juego.js';
 import { sonidos } from '../../logica/sonido.js';
 import { leer, guardar } from '../../logica/almacen.js';
+import './memoria.css';
 
 const Memoria = () => {
   const [estado, despachar] = useReducer(reducer, null, () => {
     const prefs = leer('memoria-prefs', {});
     return estadoInicial(
       prefs.nivel in NIVELES ? prefs.nivel : 'medio',
-      prefs.mazo in MAZOS ? prefs.mazo : 'original'
+      prefs.mazo in MAZOS ? prefs.mazo : 'original',
+      0,
+      Math.random,
+      modoValido(prefs.modo)
     );
   });
   const [ahora, setAhora] = useState(() => Date.now());
@@ -30,9 +38,13 @@ const Memoria = () => {
   const tableroRef = useRef(null);
 
   const nivel = NIVELES[estado.nivel];
+  const modo = MODOS[estado.modo];
+  const { columnas, filas } = dimensiones(estado.nivel, estado.modo);
   const tiempo = estado.inicio ? Math.max(0, (estado.fin ?? ahora) - estado.inicio) : 0;
-  const estrellasActuales = calcularEstrellas(estado.movimientos, estado.totalParejas);
-  const record = records[estado.nivel];
+  const estrellasDe = (movimientos) => calcularEstrellas(movimientos, estado.totalParejas, estado.tamano);
+  const estrellasActuales = estrellasDe(estado.movimientos);
+  const clave = claveRecord(estado.nivel, estado.modo);
+  const record = records[clave];
 
   // Cronómetro: corre desde la primera carta hasta ganar
   useEffect(() => {
@@ -42,7 +54,7 @@ const Memoria = () => {
     return () => clearInterval(t);
   }, [estado.inicio, estado.fin]);
 
-  // Si no son pareja, se vuelven a tapar después de un momento
+  // Si no coinciden, se vuelven a tapar después de un momento
   useEffect(() => {
     if (estado.resultado?.tipo !== 'fallo') return;
     const t = setTimeout(() => despachar({ type: 'RESOLVER' }), 1050);
@@ -71,12 +83,12 @@ const Memoria = () => {
       const marca = {
         movimientos: estado.movimientos,
         tiempo: estado.fin - estado.inicio,
-        estrellas: calcularEstrellas(estado.movimientos, estado.totalParejas),
+        estrellas: estrellasDe(estado.movimientos),
       };
-      const esNuevo = esMejorMarca(marca, recordsRef.current[estado.nivel]);
+      const esNuevo = esMejorMarca(marca, recordsRef.current[clave]);
       setNuevoRecord(esNuevo);
       if (esNuevo) {
-        const nuevos = { ...recordsRef.current, [estado.nivel]: marca };
+        const nuevos = { ...recordsRef.current, [clave]: marca };
         recordsRef.current = nuevos;
         setRecords(nuevos);
         guardar('memoria-records', nuevos);
@@ -93,10 +105,10 @@ const Memoria = () => {
     return () => clearTimeout(t);
   }, [aviso]);
 
-  // Recordar el nivel y el mazo elegidos
+  // Recordar el nivel, el mazo y la forma de jugar
   useEffect(() => {
-    guardar('memoria-prefs', { ...leer('memoria-prefs', {}), nivel: estado.nivel, mazo: estado.mazo });
-  }, [estado.nivel, estado.mazo]);
+    guardar('memoria-prefs', { ...leer('memoria-prefs', {}), nivel: estado.nivel, mazo: estado.mazo, modo: estado.modo });
+  }, [estado.nivel, estado.mazo, estado.modo]);
 
   const reiniciar = (cambios = {}) => {
     setNuevoRecord(false);
@@ -109,7 +121,7 @@ const Memoria = () => {
 
   // Moverse entre cartas con las flechas del teclado
   const alPresionarTecla = (e) => {
-    const pasos = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: nivel.columnas, ArrowUp: -nivel.columnas };
+    const pasos = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columnas, ArrowUp: -columnas };
     if (!(e.key in pasos)) return;
     const actual = Number(document.activeElement?.dataset?.indice);
     if (Number.isNaN(actual)) return;
@@ -130,23 +142,43 @@ const Memoria = () => {
   return (
     <>
       <section className="opciones" aria-label="Opciones de juego">
-        <div className="selector" role="group" aria-label="Nivel">
-          {ORDEN_NIVELES.map((id) => (
+        <div className="selector" role="group" aria-label="Forma de jugar">
+          {Object.entries(MODOS).map(([id, m]) => (
             <button
               key={id}
               type="button"
-              className={`selector__opcion ${estado.nivel === id ? 'activa' : ''}`}
-              aria-pressed={estado.nivel === id}
-              onClick={() => reiniciar({ nivel: id })}
+              className={`selector__opcion ${estado.modo === id ? 'activa' : ''}`}
+              aria-pressed={estado.modo === id}
+              title={id === 'trios' ? 'Más difícil: encuentra 3 cartas iguales seguidas' : 'Encuentra 2 cartas iguales'}
+              onClick={() => reiniciar({ modo: id })}
             >
-              {NIVELES[id].nombre}
-              <small>
-                {NIVELES[id].columnas}×{NIVELES[id].filas}
-              </small>
+              <span aria-hidden="true">{m.icono}</span> {m.nombre}
             </button>
           ))}
         </div>
-        <div className="selector" role="group" aria-label="Mazo de cartas">
+        <div className="selector" role="group" aria-label="Nivel">
+          {ORDEN_NIVELES.map((id) => {
+            const d = dimensiones(id, estado.modo);
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`selector__opcion ${estado.nivel === id ? 'activa' : ''}`}
+                aria-pressed={estado.nivel === id}
+                onClick={() => reiniciar({ nivel: id })}
+              >
+                {NIVELES[id].nombre}
+                <small>
+                  {d.columnas}×{d.filas}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mem-mazos" aria-label="Mazo de cartas">
+        <div className="selector mem-mazos__lista" role="group" aria-label="Mazo de cartas">
           {Object.entries(MAZOS).map(([id, mazo]) => (
             <button
               key={id}
@@ -161,6 +193,12 @@ const Memoria = () => {
         </div>
       </section>
 
+      {estado.modo === 'trios' && (
+        <p className="mem-explicacion">
+          🧠 <strong>Modo Tríos:</strong> voltea 3 cartas iguales seguidas. Si la segunda o la tercera no coincide, se tapan todas.
+        </p>
+      )}
+
       <section className="marcador" aria-live="polite">
         <div className="dato">
           <span className="dato__titulo">Movimientos</span>
@@ -171,7 +209,7 @@ const Memoria = () => {
           <span className="dato__valor">{formatoTiempo(tiempo)}</span>
         </div>
         <div className="dato">
-          <span className="dato__titulo">Parejas</span>
+          <span className="dato__titulo">{modo.grupo}</span>
           <span className="dato__valor">
             {estado.parejas}/{estado.totalParejas}
           </span>
@@ -197,8 +235,8 @@ const Memoria = () => {
       <main className="mesa">
         <div
           ref={tableroRef}
-          className="tablero"
-          style={{ '--cols': nivel.columnas, '--filas': nivel.filas }}
+          className={`tablero ${columnas >= 8 ? 'mem-tablero--grande' : ''}`}
+          style={{ '--cols': columnas, '--filas': filas }}
           onKeyDown={alPresionarTecla}
           aria-label="Tablero de cartas"
         >
@@ -231,11 +269,11 @@ const Memoria = () => {
         <Victoria
           movimientos={estado.movimientos}
           tiempo={estado.fin - estado.inicio}
-          estrellas={calcularEstrellas(estado.movimientos, estado.totalParejas)}
+          estrellas={estrellasDe(estado.movimientos)}
           mejorRacha={estado.mejorRacha}
           nuevoRecord={nuevoRecord}
           record={record}
-          nivelNombre={nivel.nombre}
+          nivelNombre={estado.modo === 'trios' ? `${nivel.nombre} · Tríos` : nivel.nombre}
           haySiguiente={!!siguienteNivel}
           onOtraVez={() => reiniciar()}
           onSiguiente={() => reiniciar({ nivel: siguienteNivel })}

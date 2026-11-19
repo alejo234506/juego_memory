@@ -19,9 +19,60 @@ export const DIFICULTADES = {
     palabras: 12,
     direcciones: [DER, ABA, DIAG_ABA, DIAG_ARR, IZQ, ARR, DIAG_ARR_IZQ, DIAG_ABA_IZQ],
   },
+  experto: {
+    nombre: 'Experto',
+    tam: 16,
+    palabras: 15,
+    direcciones: [DER, ABA, DIAG_ABA, DIAG_ARR, IZQ, ARR, DIAG_ARR_IZQ, DIAG_ABA_IZQ],
+    cruces: true, // prefiere que las palabras compartan letras (más difícil de ver)
+  },
 };
 
-export const ORDEN_DIFICULTADES = ['facil', 'medio', 'dificil'];
+export const ORDEN_DIFICULTADES = ['facil', 'medio', 'dificil', 'experto'];
+
+export const MODOS = {
+  clasico: { nombre: 'Clásico', icono: '📋', descripcion: 'Busca las palabras de la lista.' },
+  rompecraneos: {
+    nombre: 'Rompecráneos',
+    icono: '🧠',
+    descripcion: 'Solo ves definiciones: adivina la palabra y luego encuéntrala.',
+  },
+  contrarreloj: {
+    nombre: 'Contrarreloj',
+    icono: '⏱',
+    descripcion: '3 minutos para encontrar todas las que puedas; cada palabra suma 10 s.',
+  },
+};
+export const ORDEN_MODOS = ['clasico', 'rompecraneos', 'contrarreloj'];
+
+export const CONTRARRELOJ_INICIAL = 180000; // 3 minutos
+export const CONTRARRELOJ_BONO = 10000; // +10 s por palabra
+
+/** Tiempo que queda en contrarreloj (ms). */
+export function tiempoRestante({ inicio, fin, encontradas, pistas }, ahora, penalizacion = 15000) {
+  const usado = inicio != null ? (fin ?? ahora) - inicio : 0;
+  return CONTRARRELOJ_INICIAL + encontradas * CONTRARRELOJ_BONO - pistas * penalizacion - usado;
+}
+
+/** Clave de récord: la de clásico conserva el formato viejo ('facil', 'medio'...). */
+export function claveRecord(dificultad, modo) {
+  return modo === 'clasico' || !modo ? dificultad : `${dificultad}-${modo}`;
+}
+
+/** ¿Es mejor la marca nueva? Contrarreloj: más palabras (y luego más tiempo sobrante). Otros: menos tiempo. */
+export function esMejor(nueva, anterior, modo) {
+  if (anterior == null) return true;
+  if (modo === 'contrarreloj') {
+    if (typeof anterior !== 'object') return true;
+    return nueva.palabras > anterior.palabras || (nueva.palabras === anterior.palabras && nueva.restante > anterior.restante);
+  }
+  return nueva < anterior;
+}
+
+/** Pista de longitud para el modo Rompecráneos: "_ _ _ _ _ (5)". */
+export function mascara(norm, revelar = 0) {
+  return `${[...norm].map((l, i) => (i < revelar ? l : '_')).join(' ')} (${norm.length})`;
+}
 
 // Frecuencia aproximada de letras en español (para rellenar los huecos)
 const FRECUENCIAS = {
@@ -70,38 +121,64 @@ function barajar(lista, rng) {
 export function elegirPalabras(lista, cantidad, tam, rng = Math.random) {
   const vistas = new Set();
   const candidatas = [];
-  for (const texto of barajar(lista, rng)) {
+  for (const entrada of barajar(lista, rng)) {
+    // Acepta 'Palabra', ['Palabra', 'definición'] o { texto, definicion }
+    const texto = typeof entrada === 'string' ? entrada : Array.isArray(entrada) ? entrada[0] : entrada.texto;
+    const definicion = typeof entrada === 'string' ? '' : Array.isArray(entrada) ? entrada[1] ?? '' : entrada.definicion ?? '';
     const norm = normalizar(texto);
     if (norm.length < 3 || norm.length > tam || vistas.has(norm)) continue;
+    // ninguna palabra puede estar dentro de otra (si no, se encontraría "dos veces")
+    if ([...vistas].some((v) => v.includes(norm) || norm.includes(v))) continue;
     vistas.add(norm);
-    candidatas.push({ texto, norm });
+    candidatas.push({ texto, norm, definicion });
   }
   return candidatas.slice(0, cantidad);
 }
 
-function cabe(grilla, tam, norm, fila, col, [df, dc]) {
+/** -1 si no cabe; si cabe, cuántas letras comparte con palabras ya puestas. */
+function cruces(grilla, tam, norm, fila, col, [df, dc]) {
+  let comunes = 0;
   for (let i = 0; i < norm.length; i++) {
     const f = fila + df * i;
     const c = col + dc * i;
-    if (f < 0 || f >= tam || c < 0 || c >= tam) return false;
+    if (f < 0 || f >= tam || c < 0 || c >= tam) return -1;
     const actual = grilla[f][c];
-    if (actual && actual !== norm[i]) return false;
+    if (actual) {
+      if (actual !== norm[i]) return -1;
+      comunes++;
+    }
   }
-  return true;
+  // no se permite poner una palabra exactamente encima de otra
+  return comunes === norm.length ? -1 : comunes;
 }
 
-/** Busca un lugar para la palabra probando todas las posiciones en orden aleatorio. */
-function colocar(grilla, tam, norm, direcciones, rng) {
+/**
+ * Busca un lugar para la palabra probando todas las posiciones en orden aleatorio.
+ * Con `preferirCruces`, casi siempre elige un lugar donde comparta letras con otras.
+ */
+function colocar(grilla, tam, norm, direcciones, rng, preferirCruces = false) {
   const opciones = [];
   for (const dir of direcciones) {
     for (let f = 0; f < tam; f++) {
       for (let c = 0; c < tam; c++) opciones.push([f, c, dir]);
     }
   }
+  let primera = null;
+  let mejor = null;
+  let mejorCruces = 0;
   for (const [f, c, dir] of barajar(opciones, rng)) {
-    if (cabe(grilla, tam, norm, f, c, dir)) return { fila: f, col: c, df: dir[0], dc: dir[1] };
+    const n = cruces(grilla, tam, norm, f, c, dir);
+    if (n < 0) continue;
+    const lugar = { fila: f, col: c, df: dir[0], dc: dir[1] };
+    if (!preferirCruces) return lugar;
+    primera ??= lugar;
+    if (n > mejorCruces) {
+      mejor = lugar;
+      mejorCruces = n;
+    }
   }
-  return null;
+  if (mejor && rng() < 0.85) return mejor;
+  return primera;
 }
 
 /**
@@ -121,7 +198,7 @@ export function generarSopa(listaPalabras, idDificultad, rng = Math.random) {
     let ok = true;
 
     for (const p of elegidas) {
-      const lugar = colocar(grilla, tam, p.norm, direcciones, rng);
+      const lugar = colocar(grilla, tam, p.norm, direcciones, rng, !!dif.cruces);
       if (!lugar) {
         ok = false;
         break;

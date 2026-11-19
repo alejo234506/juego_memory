@@ -2,8 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CASOS } from './casos.js';
 import {
   crearPartida,
+  normalizarPartida,
   investigar,
   yaHecho,
+  rigorDisponible,
+  cruzarPistas,
+  cronologia,
+  deduccionesNecesarias,
+  MAX_CRUCES_FALLIDOS,
   alternarMarca,
   evaluar,
   casoDesbloqueado,
@@ -22,10 +28,16 @@ const GIROS = [-3, 2, -1.5, 3, -2.5]; // cada polaroid un poco torcida
 const ETIQUETA_MARCA = { sospechoso: 'Sospechoso', descartado: 'Descartado' };
 
 function partidaGuardada(caso) {
-  const g = leer(CLAVE_PARTIDA, null);
-  if (g && g.casoId === caso.id && Array.isArray(g.hechos) && Array.isArray(g.pistas)) return g;
-  return crearPartida(caso);
+  return normalizarPartida(leer(CLAVE_PARTIDA, null), caso);
 }
+
+const MENSAJE_CRUCE = {
+  nueva: '💡 ¡Contradicción encontrada! Mira la nueva deducción.',
+  repetida: 'Ya habías descubierto esa deducción.',
+  nada: 'Esas dos pistas no se contradicen. Perdiste 1 acción.',
+  agotado: 'Ya no puedes cruzar más pistas: se acabaron tus intentos.',
+  invalida: 'Elige dos pistas distintas de la libreta.',
+};
 
 const Insignias = ({ n, grande = false }) => (
   <span className={`det-insignias ${grande ? 'det-insignias--grande' : ''}`} aria-label={`${n} de 3 insignias`}>
@@ -43,11 +55,20 @@ const Archivo = ({ progreso, onAbrir }) => (
     <div className="det-archivo__cabeza">
       <h2 id="det-titulo-archivo" className="det-maquina">Archivo de casos</h2>
       <p>Investiga lugares, interroga sospechosos y resuelve el misterio antes de que se acaben tus acciones.</p>
+      <p className="det-archivo__conteo">
+        Casos resueltos: <strong>{CASOS.filter((c) => (progreso[c.id] ?? 0) >= 1).length}</strong>/{CASOS.length}
+      </p>
+      <ul className="det-consejos">
+        <li><span aria-hidden="true">🔗</span> <strong>Cruza pistas</strong> en la libreta: si dos se contradicen, descubres una deducción (gratis). Si te equivocas, pierdes 1 acción.</li>
+        <li><span aria-hidden="true">🕒</span> La <strong>cronología</strong> ordena por hora las pistas que tienen hora.</li>
+        <li><span aria-hidden="true">❓</span> Algunos sospechosos tienen una <strong>pregunta de rigor</strong> que solo aparece cuando encuentras la pista adecuada.</li>
+      </ul>
     </div>
     <div className="det-carpetas">
       {CASOS.map((caso, i) => {
         const abierto = casoDesbloqueado(CASOS, i, progreso);
         const insignias = progreso[caso.id] ?? 0;
+        const necesarias = deduccionesNecesarias(caso).length;
         return (
           <button
             key={caso.id}
@@ -61,7 +82,14 @@ const Archivo = ({ progreso, onAbrir }) => (
             <span className="det-carpeta__pestana">Caso n.º {caso.numero}</span>
             <span className="det-carpeta__icono" aria-hidden="true">{abierto ? caso.icono : '🔒'}</span>
             <span className="det-carpeta__titulo">{abierto ? caso.titulo : 'Clasificado'}</span>
-            <span className="det-carpeta__dificultad">{caso.dificultad}</span>
+            <span className="det-carpeta__dificultad">
+              {caso.dificultad}
+              {abierto && necesarias > 0 && (
+                <span className="det-carpeta__extra" title="Para la tercera insignia hay que descubrir deducciones">
+                  {' '}· 🔗 {necesarias}
+                </span>
+              )}
+            </span>
             {abierto && insignias > 0 && <Insignias n={insignias} />}
             {abierto && insignias > 0 && <span className="det-sello det-sello--resuelto">Resuelto</span>}
             {!abierto && <span className="det-carpeta__nota">Resuelve el caso anterior</span>}
@@ -206,7 +234,13 @@ const Resultado = ({ caso, resultado, mejor, haySiguiente, onArchivo, onReintent
 
         <Insignias n={resultado.insignias} grande />
         {resultado.insignias === 3 && <p className="det-resultado__nota">¡Investigación perfecta y con acciones de sobra!</p>}
-        {resultado.insignias === 2 && <p className="det-resultado__nota">Todo correcto. Usa menos acciones para la tercera insignia.</p>}
+        {resultado.insignias === 2 && (
+          <p className="det-resultado__nota">
+            {resultado.deduccionesFaltantes > 0
+              ? `Todo correcto, pero te faltó descubrir ${resultado.deduccionesFaltantes === 1 ? '1 deducción clave' : `${resultado.deduccionesFaltantes} deducciones clave`}: cruza las pistas que se contradicen en la libreta.`
+              : 'Todo correcto. Usa menos acciones para la tercera insignia.'}
+          </p>
+        )}
         {resultado.insignias === 1 && <p className="det-resultado__nota">Atrapaste al culpable, pero el motivo o el método no eran esos.</p>}
         {resultado.insignias === 0 && <p className="det-resultado__nota">El verdadero culpable sigue libre... ¿lo intentas otra vez?</p>}
 
@@ -265,6 +299,9 @@ const Detective = () => {
   const [acusando, setAcusando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [nueva, setNueva] = useState(null); // última pista encontrada (para animarla)
+  const [pestana, setPestana] = useState('pistas'); // pestaña de la libreta
+  const [seleccion, setSeleccion] = useState([]); // pistas elegidas para cruzar
+  const [cruce, setCruce] = useState(null); // { resultado, deduccion }
   const fichaRef = useRef(null);
 
   // Guardar la partida en curso para poder volver después
@@ -280,6 +317,9 @@ const Detective = () => {
     setResultado(null);
     setAcusando(false);
     setNueva(null);
+    setPestana('pistas');
+    setSeleccion([]);
+    setCruce(null);
   };
 
   const volverArchivo = () => {
@@ -303,8 +343,27 @@ const Detective = () => {
     setPartida((p) => alternarMarca(p, id));
   };
 
+  // Elegir hasta dos pistas para cruzarlas
+  const alternarSeleccion = (id) => {
+    sonidos.voltear();
+    setCruce(null);
+    setSeleccion((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= 2 ? [s[1], id] : [...s, id]));
+  };
+
+  const cruzar = () => {
+    const r = cruzarPistas(partida, caso, seleccion[0], seleccion[1]);
+    setPartida(r.partida);
+    setCruce({ resultado: r.resultado, deduccion: r.contradiccion?.deduccion ?? null });
+    if (r.resultado === 'nueva') {
+      sonidos.victoria();
+      setSeleccion([]);
+    } else if (r.resultado === 'nada' || r.resultado === 'agotado') {
+      sonidos.fallo();
+    }
+  };
+
   const acusar = (eleccion) => {
-    const r = evaluar(caso, eleccion, partida.acciones);
+    const r = evaluar(caso, eleccion, partida.acciones, partida.deducciones);
     if (r.resuelto) sonidos.victoria();
     else sonidos.fallo();
     const nuevoProgreso = actualizarProgreso(progreso, caso.id, r.insignias);
@@ -329,6 +388,12 @@ const Detective = () => {
   const siguienteCaso = CASOS[indice + 1];
   const sospechoso = caso.sospechosos.find((s) => s.id === elegido);
   const sinAcciones = partida.acciones === 0;
+  const necesarias = deduccionesNecesarias(caso);
+  const necesariasHechas = necesarias.filter((c) => partida.deducciones.includes(c.id)).length;
+  const deduccionesHechas = (caso.contradicciones ?? []).filter((c) => partida.deducciones.includes(c.id));
+  const lineaTiempo = cronologia(caso, partida.pistas);
+  const hayCruces = (caso.contradicciones ?? []).length > 0;
+  const crucesAgotados = partida.crucesFallidos >= MAX_CRUCES_FALLIDOS;
 
   return (
     <div className="det">
@@ -347,6 +412,14 @@ const Detective = () => {
               </span>
             ))}
           </span>
+          {necesarias.length > 0 && (
+            <span
+              className={`det-acciones__deducciones ${necesariasHechas === necesarias.length ? 'completas' : ''}`}
+              title="Deducciones clave descubiertas (necesarias para la tercera insignia)"
+            >
+              🔗 Deducciones clave: <strong>{necesariasHechas}</strong>/{necesarias.length}
+            </span>
+          )}
         </div>
         <button type="button" className="boton boton--principal" onClick={() => setAcusando(true)}>
           ⚖️ Hacer la acusación
@@ -432,6 +505,36 @@ const Detective = () => {
                 </button>
               )}
 
+              {sospechoso.rigor && yaHecho(partida, 'sospechoso', sospechoso.id) && (
+                <div className="det-rigor">
+                  {yaHecho(partida, 'rigor', sospechoso.id) ? (
+                    <>
+                      <p className="det-rigor__pregunta">❓ {sospechoso.rigor.pregunta}</p>
+                      <div className="det-dialogo">
+                        {sospechoso.rigor.respuesta.map((linea, i) => (
+                          <p key={i} className="det-dialogo__linea" style={{ '--i': i }}>
+                            «{linea}»
+                          </p>
+                        ))}
+                      </div>
+                    </>
+                  ) : rigorDisponible(partida, caso, sospechoso.id) ? (
+                    <button
+                      type="button"
+                      className="boton det-boton-papel det-rigor__boton"
+                      disabled={sinAcciones}
+                      onClick={() => accion('rigor', sospechoso.id)}
+                    >
+                      ❓ Pregunta de rigor: «{sospechoso.rigor.pregunta}» (1 acción)
+                    </button>
+                  ) : (
+                    <p className="det-rigor__pendiente">
+                      🤔 Se nota nervioso... quizás diga algo más si encuentras la pista adecuada.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="det-ficha__marcas" role="group" aria-label={`Marcar a ${sospechoso.nombre}`}>
                 <span>Tu opinión:</span>
                 <button
@@ -480,23 +583,125 @@ const Detective = () => {
         <aside className="det-libreta" aria-labelledby="det-titulo-libreta">
           <span className="det-libreta__espiral" aria-hidden="true" />
           <h3 id="det-titulo-libreta" className="det-libreta__titulo">Libreta del detective</h3>
-          {partida.pistas.length === 0 ? (
-            <p className="det-libreta__vacia">Todavía no hay pistas. Investiga un lugar o interroga a alguien.</p>
-          ) : (
-            <ol className="det-pistas">
-              {partida.pistas.map((id) => {
-                const pista = caso.pistas[id];
-                const origen = origenDePista(caso, id);
-                return (
-                  <li key={id} className={`det-pista ${nueva === id ? 'det-pista--nueva' : ''}`}>
-                    <span className="det-pista__origen">
-                      <span aria-hidden="true">{origen?.icono}</span> {origen?.nombre}
+
+          <div className="det-pestanas" role="tablist" aria-label="Secciones de la libreta">
+            {[
+              ['pistas', `📝 Pistas (${partida.pistas.length})`],
+              ['deducciones', `💡 Deducciones (${deduccionesHechas.length})`],
+              ['cronologia', `🕒 Cronología (${lineaTiempo.length})`],
+            ].map(([id, texto]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={pestana === id}
+                className={`det-pestana ${pestana === id ? 'activa' : ''}`}
+                onClick={() => setPestana(id)}
+              >
+                {texto}
+              </button>
+            ))}
+          </div>
+
+          {pestana === 'pistas' && (
+            <>
+              {hayCruces && partida.pistas.length >= 2 && (
+                <div className="det-cruce">
+                  <p className="det-cruce__ayuda">
+                    Toca <strong>🔗</strong> en dos pistas que se contradigan y crúzalas.
+                    <span className="det-cruce__intentos">
+                      {' '}Errores: {partida.crucesFallidos}/{MAX_CRUCES_FALLIDOS}
                     </span>
-                    <span className="det-pista__texto">{pista.texto}</span>
+                  </p>
+                  <button
+                    type="button"
+                    className="boton boton--principal det-cruce__boton"
+                    disabled={seleccion.length !== 2 || crucesAgotados}
+                    onClick={cruzar}
+                  >
+                    🔗 Cruzar pistas ({seleccion.length}/2)
+                  </button>
+                  {cruce && (
+                    <p className={`det-cruce__resultado det-cruce__resultado--${cruce.resultado}`} role="status">
+                      {MENSAJE_CRUCE[cruce.resultado]}
+                      {cruce.deduccion && <em className="det-cruce__deduccion">{cruce.deduccion}</em>}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {partida.pistas.length === 0 ? (
+                <p className="det-libreta__vacia">Todavía no hay pistas. Investiga un lugar o interroga a alguien.</p>
+              ) : (
+                <ol className="det-pistas">
+                  {partida.pistas.map((id) => {
+                    const pista = caso.pistas[id];
+                    const origen = origenDePista(caso, id);
+                    const elegida = seleccion.includes(id);
+                    return (
+                      <li
+                        key={id}
+                        className={`det-pista ${nueva === id ? 'det-pista--nueva' : ''} ${elegida ? 'det-pista--elegida' : ''}`}
+                      >
+                        <span className="det-pista__origen">
+                          <span aria-hidden="true">{origen?.icono}</span> {origen?.nombre}
+                          {pista.hora && <span className="det-pista__hora">🕒 {pista.hora}</span>}
+                        </span>
+                        <span className="det-pista__texto">{pista.texto}</span>
+                        {hayCruces && partida.pistas.length >= 2 && (
+                          <button
+                            type="button"
+                            className={`det-pista__unir ${elegida ? 'activo' : ''}`}
+                            aria-pressed={elegida}
+                            aria-label={elegida ? 'Quitar de la selección para cruzar' : 'Elegir para cruzar'}
+                            title="Elegir para cruzar"
+                            disabled={crucesAgotados && !elegida}
+                            onClick={() => alternarSeleccion(id)}
+                          >
+                            🔗
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </>
+          )}
+
+          {pestana === 'deducciones' && (
+            deduccionesHechas.length === 0 ? (
+              <p className="det-libreta__vacia">
+                {hayCruces
+                  ? 'Todavía no hay deducciones. Cruza dos pistas que se contradigan para descubrir una.'
+                  : 'En este caso no hay contradicciones escondidas: confía en tus pistas.'}
+              </p>
+            ) : (
+              <ul className="det-deducciones">
+                {deduccionesHechas.map((c) => (
+                  <li key={c.id} className="det-deduccion">
+                    <span className="det-deduccion__icono" aria-hidden="true">💡</span>
+                    <span>{c.deduccion}</span>
+                    {c.necesaria && <span className="det-deduccion__clave">Clave</span>}
                   </li>
-                );
-              })}
-            </ol>
+                ))}
+              </ul>
+            )
+          )}
+
+          {pestana === 'cronologia' && (
+            lineaTiempo.length === 0 ? (
+              <p className="det-libreta__vacia">Todavía no tienes pistas con hora. Las que la tengan aparecerán aquí en orden.</p>
+            ) : (
+              <ol className="det-cronologia">
+                {lineaTiempo.map((p) => (
+                  <li key={p.id} className="det-cronologia__item">
+                    <span className="det-cronologia__hora">{p.hora}{p.dia ? ' ☾' : ''}</span>
+                    <span className="det-cronologia__texto">{p.texto}</span>
+                  </li>
+                ))}
+              </ol>
+            )
           )}
           {Object.keys(partida.marcas).length > 0 && (
             <div className="det-libreta__marcas">

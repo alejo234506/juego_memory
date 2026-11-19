@@ -990,3 +990,330 @@
     transition: none !important;
   }
 }
+
+/* =========================================================
+   Mecánicas nuevas: cruzar pistas, deducciones, cronología y pregunta de rigor
+   ========================================================= */
+.det-archivo__conteo {
+  font-family: var(--det-maquina);
+}
+
+.det-archivo__conteo strong {
+  color: var(--acento);
+  font-size: 1.15rem;
+}
+
+.det-consejos {
+  list-style: none;
+  max-width: 640px;
+  margin: 14px auto 0;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font-size: 0.92rem;
+  color: var(--det-lapiz);
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 25px, rgba(29, 79, 163, 0.14) 25px 26px),
+    #fffdf2;
+  border-radius: 3px;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2), 0 14px 22px -12px rgba(0, 0, 0, 0.7);
+  transform: rotate(-0.6deg);
+}
+
+.det-carpeta__extra {
+  white-space: nowrap;
+}
+
+.det-acciones__deducciones {
+  font-size: 0.9rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--panel-borde);
+}
+
+.det-acciones__deducciones strong {
+  color: var(--acento);
+}
+
+.det-acciones__deducciones.completas {
+  border-style: solid;
+  border-color: var(--ok);
+}
+
+.det-acciones__deducciones.completas strong {
+  color: var(--ok);
+}
+
+/* Pestañas de la libreta, como separadores de colores */
+.det-pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 12px;
+  border-bottom: 2px solid rgba(58, 58, 82, 0.25);
+}
+
+.det-pestana {
+  border: none;
+  border-radius: 8px 8px 0 0;
+  padding: 5px 10px;
+  font-family: var(--det-maquina);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--det-lapiz);
+  background: rgba(233, 207, 150, 0.55);
+  transform: translateY(2px);
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.det-pestana:hover {
+  background: rgba(233, 207, 150, 0.9);
+}
+
+.det-pestana.activa {
+  background: var(--det-manila);
+  transform: translateY(0);
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.det-pestana:focus-visible,
+.det-pista__unir:focus-visible {
+  outline: 3px solid var(--det-azul);
+  outline-offset: 2px;
+}
+
+/* Cruzar pistas */
+.det-cruce {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 2px dashed rgba(29, 79, 163, 0.45);
+  border-radius: 8px;
+  background: rgba(29, 79, 163, 0.05);
+}
+
+.det-cruce__ayuda {
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.det-cruce__intentos {
+  font-family: var(--det-maquina);
+  font-size: 0.75rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.det-cruce__boton {
+  align-self: flex-start;
+  font-size: 0.9rem;
+}
+
+.det-cruce__resultado {
+  font-family: var(--det-mano);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  animation: det-escribir 0.4s both;
+}
+
+.det-cruce__resultado--nueva {
+  color: #1d7a45;
+}
+
+.det-cruce__resultado--nada,
+.det-cruce__resultado--agotado {
+  color: var(--det-rojo);
+}
+
+.det-cruce__deduccion {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  background: linear-gradient(transparent 55%, rgba(255, 214, 0, 0.55) 55%);
+}
+
+.det-pista {
+  position: relative;
+  padding-right: 34px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.det-pista--elegida {
+  background: rgba(29, 79, 163, 0.1);
+  box-shadow: inset 3px 0 0 var(--det-azul);
+}
+
+.det-pista__hora {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(179, 38, 30, 0.12);
+  color: var(--det-rojo);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.det-pista__unir {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid rgba(58, 58, 82, 0.35);
+  border-radius: 50%;
+  background: #fffdf2;
+  font-size: 0.95rem;
+  opacity: 0.65;
+  transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
+}
+
+.det-pista__unir:hover:not(:disabled) {
+  opacity: 1;
+  transform: rotate(-15deg) scale(1.1);
+}
+
+.det-pista__unir.activo {
+  opacity: 1;
+  border-color: var(--det-azul);
+  background: #dfe8fb;
+}
+
+.det-pista__unir:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+/* Deducciones */
+.det-deducciones {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.det-deduccion {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-family: var(--det-mano);
+  line-height: 1.5;
+  font-size: 0.95rem;
+  animation: det-escribir 0.5s both;
+}
+
+.det-deduccion__icono {
+  flex-shrink: 0;
+}
+
+.det-deduccion__clave {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 1px 8px;
+  border: 2px solid var(--det-rojo);
+  border-radius: 4px;
+  color: var(--det-rojo);
+  font-family: Impact, 'Arial Black', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+}
+
+/* Cronología: línea de tiempo dibujada en la libreta */
+.det-cronologia {
+  list-style: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 18px;
+}
+
+.det-cronologia::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  width: 2px;
+  background: rgba(179, 38, 30, 0.45);
+}
+
+.det-cronologia__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.det-cronologia__item::before {
+  content: '';
+  position: absolute;
+  left: -17px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--det-rojo);
+  box-shadow: 0 0 0 3px #fffdf2;
+}
+
+.det-cronologia__hora {
+  font-family: var(--det-maquina);
+  font-weight: 700;
+  color: var(--det-rojo);
+}
+
+.det-cronologia__texto {
+  font-family: var(--det-mano);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+/* Pregunta de rigor */
+.det-rigor {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1.5px dashed rgba(0, 0, 0, 0.2);
+}
+
+.det-rigor__pregunta {
+  font-family: var(--det-maquina);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--det-azul);
+  margin-bottom: 6px;
+}
+
+.det-rigor__boton {
+  text-align: left;
+  white-space: normal;
+  line-height: 1.35;
+  border: 2px solid var(--det-azul);
+  animation: det-latir 1.6s ease-in-out infinite;
+}
+
+.det-rigor__pendiente {
+  font-family: var(--det-mano);
+  font-size: 0.88rem;
+  opacity: 0.75;
+}
+
+@keyframes det-latir {
+  50% {
+    box-shadow: 0 0 0 4px rgba(29, 79, 163, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .det-rigor__boton,
+  .det-cruce__resultado,
+  .det-deduccion {
+    animation: none;
+  }
+}

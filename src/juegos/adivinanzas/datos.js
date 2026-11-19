@@ -1,6 +1,8 @@
 // Adivinanzas: tradicionales de la cultura popular y otras inventadas para este juego.
 // Cada una tiene: respuesta, sinónimos aceptados, categoría y 2 pistas (de menos a más clara).
 
+import { ADIVINANZAS_EXTRA } from './datos_extra.js';
+
 export const CATEGORIAS = {
   animales: { nombre: 'Animales', icono: '🐾', color: '#f2a65a' },
   objetos: { nombre: 'Objetos', icono: '🧰', color: '#7fb3e0' },
@@ -8,18 +10,41 @@ export const CATEGORIAS = {
   comida: { nombre: 'Comida', icono: '🍎', color: '#f08a8a' },
   cuerpo: { nombre: 'Cuerpo', icono: '🫀', color: '#e7a3d4' },
   logica: { nombre: 'Lógica', icono: '🧠', color: '#c3a6f0' },
+  rompecraneos: { nombre: 'Rompecráneos', icono: '🧩', color: '#9a8cff' },
+  numeros: { nombre: 'Números', icono: '🔢', color: '#5cc9c0' },
+  oficios: { nombre: 'Oficios y lugares', icono: '👷', color: '#e8b04a' },
+  palabras: { nombre: 'Palabras y letras', icono: '🔤', color: '#6fa8ff' },
+  tramposas: { nombre: 'Tramposas', icono: '😜', color: '#ff7f9f' },
+  ciencia: { nombre: 'Historia y ciencia', icono: '🔬', color: '#7fd18b' },
+};
+
+// Dificultad: cuántos cerebritos 🧠 se necesitan y cuántos puntos vale
+export const DIFICULTADES = {
+  facil: { nombre: 'Fácil', cerebros: 1, puntos: 100 },
+  medio: { nombre: 'Medio', cerebros: 2, puntos: 150 },
+  dificil: { nombre: 'Difícil', cerebros: 3, puntos: 200 },
+  genio: { nombre: 'Genio', cerebros: 4, puntos: 300 },
+};
+
+// Las originales son fáciles, salvo estas
+const DIFICULTAD_ORIGINALES = {
+  gata: 'medio', navaja: 'medio', teclado: 'medio', toalla: 'medio', arcoiris: 'medio',
+  ajo: 'medio', aguacate: 'medio', cebolla: 'medio', dedos: 'medio',
+  oscuridad: 'dificil', silencio: 'dificil', secreto: 'medio', hoyo: 'dificil',
+  mapa: 'dificil', manana: 'medio', eco: 'medio',
 };
 
 const a = (id, categoria, texto, respuesta, sinonimos, pistas) => ({
   id,
   categoria,
+  dificultad: DIFICULTAD_ORIGINALES[id] ?? 'facil',
   texto,
   respuesta,
   sinonimos,
   pistas,
 });
 
-export const ADIVINANZAS = [
+const ORIGINALES = [
   // ---------------- Animales ----------------
   a('caracol', 'animales',
     'Llevo mi casa a cuestas, camino muy despacito y dejo un caminito brillante por donde paso.',
@@ -240,3 +265,5 @@ export const ADIVINANZAS = [
     'eco', [],
     ['Me escuchas en las cuevas.', 'Repito: …ito, …ito, …ito.']),
 ];
+
+export const ADIVINANZAS = [...ORIGINALES, ...ADIVINANZAS_EXTRA];

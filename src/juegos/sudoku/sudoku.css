@@ -1,0 +1,523 @@
+/* =========================================================
+   SUDOKU — hoja de periódico sobre el tapete
+   ========================================================= */
+.sdk {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  --sdk-tinta: #1d1a16;
+  --sdk-lapiz: #2148a8;
+  --sdk-linea: rgba(29, 26, 22, 0.28);
+  --sdk-seleccion: #ffe38a;
+  --sdk-vecina: rgba(255, 210, 90, 0.22);
+  --sdk-igual: rgba(70, 130, 255, 0.2);
+  --sdk-error: #c8312f;
+}
+
+/* ----- Interruptores ----- */
+.sdk-interruptores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sdk-interruptor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-borde);
+  color: var(--texto-suave);
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sdk-interruptor input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.sdk-interruptor__pista {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: background-color 0.2s;
+}
+
+.sdk-interruptor__pista::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--papel);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s;
+}
+
+.sdk-interruptor input:checked + .sdk-interruptor__pista {
+  background: var(--ok);
+}
+
+.sdk-interruptor input:checked + .sdk-interruptor__pista::after {
+  transform: translateX(16px);
+}
+
+.sdk-interruptor input:checked ~ * {
+  color: var(--texto);
+}
+
+.sdk-interruptor:has(input:checked) {
+  color: var(--texto);
+}
+
+.sdk-interruptor input:focus-visible + .sdk-interruptor__pista {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.sdk-marcador {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.sdk-dato--alerta .dato__valor {
+  color: var(--error);
+}
+
+/* ----- Hoja de periódico ----- */
+.sdk-mesa {
+  place-items: start center;
+}
+
+.sdk-hoja {
+  position: relative;
+  width: min(100%, 860px);
+  padding: clamp(12px, 3vw, 26px);
+  color: var(--sdk-tinta);
+  border-radius: 3px;
+  background:
+    linear-gradient(175deg, rgba(255, 255, 255, 0.5), transparent 30%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.018) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, var(--papel), var(--papel-2));
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.25),
+    0 18px 30px -12px rgba(0, 0, 0, 0.65),
+    inset 0 0 40px rgba(120, 90, 40, 0.12);
+  transform: rotate(-0.4deg);
+}
+
+/* Esquina doblada */
+.sdk-hoja::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, var(--papel-2) 50%, rgba(0, 0, 0, 0.18) 50%);
+  border-top-left-radius: 4px;
+  box-shadow: -2px -2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.sdk-hoja__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 3px double var(--sdk-tinta);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.sdk-hoja__periodico {
+  font-size: clamp(1.15rem, 3.5vw, 1.6rem);
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.sdk-hoja__seccion {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+}
+
+.sdk-generando {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 320px;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 1.1rem;
+}
+
+.sdk-generando__lapiz {
+  font-size: 2.2rem;
+  animation: sdk-escribir 0.6s ease-in-out infinite alternate;
+}
+
+/* ----- Distribución: tablero + controles ----- */
+.sdk-juego {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 260px);
+  gap: clamp(14px, 3vw, 28px);
+  align-items: start;
+}
+
+/* ----- Tablero ----- */
+.sdk-tablero {
+  --n: 9;
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  width: min(100%, 520px);
+  margin: 0 auto;
+  aspect-ratio: 1;
+  border: 3px solid var(--sdk-tinta);
+  background: #fffdf7;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.sdk-celda {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  border-right: 1px solid var(--sdk-linea);
+  border-bottom: 1px solid var(--sdk-linea);
+  background: transparent;
+  color: var(--sdk-lapiz);
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: clamp(1rem, 4.4vw, 1.85rem);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.sdk-tablero--6 .sdk-celda {
+  font-size: clamp(1.2rem, 6vw, 2.3rem);
+}
+
+.sdk-celda:nth-child(9n) {
+  border-right: none;
+}
+
+.sdk-tablero--6 .sdk-celda:nth-child(9n) {
+  border-right: 1px solid var(--sdk-linea);
+}
+
+.sdk-tablero--6 .sdk-celda:nth-child(6n) {
+  border-right: none;
+}
+
+.sdk-celda--borde-der {
+  border-right: 2.5px solid var(--sdk-tinta) !important;
+}
+
+.sdk-celda--borde-abajo {
+  border-bottom: 2.5px solid var(--sdk-tinta);
+}
+
+.sdk-celda--fija {
+  color: var(--sdk-tinta);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+}
+
+.sdk-celda--vecina {
+  background: var(--sdk-vecina);
+}
+
+.sdk-celda--igual {
+  background: var(--sdk-igual);
+}
+
+.sdk-celda--seleccionada {
+  background: var(--sdk-seleccion);
+  box-shadow: inset 0 0 0 2px #d9a400;
+}
+
+.sdk-celda--error {
+  color: var(--sdk-error);
+  background-image: repeating-linear-gradient(135deg, rgba(200, 49, 47, 0.12) 0 4px, transparent 4px 8px);
+}
+
+.sdk-celda--error.sdk-celda--fija {
+  color: var(--sdk-tinta);
+}
+
+.sdk-celda:focus-visible {
+  outline: 3px solid var(--sdk-lapiz);
+  outline-offset: -3px;
+  z-index: 1;
+}
+
+.sdk-celda:hover:not(.sdk-celda--seleccionada) {
+  background-color: rgba(255, 227, 138, 0.45);
+}
+
+.sdk-celda--ok .sdk-celda__valor {
+  animation: sdk-poner 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sdk-celda--pista .sdk-celda__valor {
+  animation: sdk-pista 0.8s ease-out;
+}
+
+.sdk-celda--sacudir .sdk-celda__valor {
+  animation: sdk-sacudir 0.4s;
+}
+
+.sdk-notas {
+  display: grid;
+  grid-template-columns: repeat(var(--cols-notas), 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  font-size: clamp(0.42rem, 1.45vw, 0.68rem);
+  font-weight: 500;
+  color: #5a5a6a;
+}
+
+.sdk-tablero--6 .sdk-notas {
+  font-size: clamp(0.55rem, 2vw, 0.85rem);
+}
+
+.sdk-notas span {
+  display: grid;
+  place-items: center;
+  visibility: hidden;
+}
+
+.sdk-notas span.activa {
+  visibility: visible;
+}
+
+/* ----- Teclado de números y herramientas ----- */
+.sdk-controles {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sdk-teclado {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.sdk-tecla {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: none;
+  border-radius: 10px;
+  color: var(--sdk-tinta);
+  background: linear-gradient(180deg, #fffdf7, #efe6d2);
+  box-shadow:
+    0 3px 0 #b9a888,
+    0 6px 10px -4px rgba(0, 0, 0, 0.45);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.sdk-tecla:hover {
+  transform: translateY(-1px);
+}
+
+.sdk-tecla:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 #b9a888, 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.sdk-tecla__numero {
+  font-family: Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sdk-tecla--nota .sdk-tecla__numero {
+  color: #5a5a6a;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.1rem;
+}
+
+.sdk-tecla__faltan {
+  font-size: 0.68rem;
+  opacity: 0.7;
+}
+
+.sdk-tecla--completa {
+  opacity: 0.45;
+}
+
+.sdk-tecla--completa .sdk-tecla__faltan {
+  color: var(--ok);
+  opacity: 1;
+  font-weight: 700;
+}
+
+.sdk-herramientas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sdk-herramienta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 6px;
+  border: 2px solid var(--sdk-tinta);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  background: transparent;
+  color: var(--sdk-tinta);
+  font-weight: 600;
+  font-size: 0.92rem;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.sdk-herramienta:hover:not(:disabled) {
+  background: rgba(29, 26, 22, 0.08);
+}
+
+.sdk-herramienta.activa {
+  background: var(--sdk-lapiz);
+  border-color: var(--sdk-lapiz);
+  color: #fff;
+}
+
+.sdk-herramienta:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sdk-final__texto {
+  margin: 10px 0;
+  color: var(--tinta);
+  line-height: 1.4;
+}
+
+@keyframes sdk-poner {
+  from {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+@keyframes sdk-pista {
+  0% {
+    transform: scale(0.3);
+    color: #d9a400;
+    text-shadow: 0 0 12px #ffcf4a;
+  }
+  60% {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes sdk-sacudir {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes sdk-escribir {
+  to {
+    transform: translate(8px, -4px) rotate(-14deg);
+  }
+}
+
+/* ----- Celular ----- */
+@media (max-width: 760px) {
+  .sdk-juego {
+    grid-template-columns: 1fr;
+  }
+
+  .sdk-controles {
+    width: min(100%, 520px);
+    margin: 0 auto;
+  }
+
+  .sdk-teclado {
+    grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+    gap: 5px;
+  }
+
+  .sdk-tecla {
+    padding: 6px 2px;
+  }
+
+  .sdk-tecla__numero {
+    font-size: 1.3rem;
+  }
+
+  .sdk-tecla__faltan {
+    font-size: 0.58rem;
+  }
+
+  .sdk-herramientas {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+
+  .sdk-herramienta {
+    flex-direction: column;
+    gap: 0;
+    font-size: 0.72rem;
+    padding: 6px 2px;
+  }
+
+  .sdk-hoja {
+    transform: none;
+  }
+
+  .sdk-marcador {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .sdk-marcador .dato--record {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .sdk-tecla__faltan {
+    display: none;
+  }
+
+  .sdk-tablero {
+    border-width: 2px;
+  }
+}

@@ -1,3 +1,5 @@
+import { NUEVOS } from './casos_nuevos.js';
+
 // Casos del juego Detective. Todo el contenido es original.
 //
 // Estructura de cada caso:
@@ -7,8 +9,9 @@
 // - pistas: `clave: true` marca las pistas necesarias para resolver el caso (no se muestra al jugador).
 //   `sobre` lista los sospechosos a los que se refiere la pista.
 // - solucion: ids de culpable, motivo y método.
+// Los casos nuevos (casos_nuevos.js) agregan cronología, contradicciones y preguntas de rigor.
 
-export const CASOS = [
+const ORIGINALES = [
   // ==================================================================
   {
     id: 'pastel',
@@ -818,3 +821,31 @@ export const CASOS = [
       'para salvar su negocio de la quiebra.',
   },
 ];
+
+// Contradicciones agregadas a un caso original (para enseñar a cruzar pistas desde el principio)
+const EXTRAS = {
+  pastel: {
+    contradicciones: [
+      {
+        id: 'c-chocolate',
+        pistas: ['p-beatriz', 'p-glaseado'],
+        sospechoso: 'beatriz',
+        deduccion:
+          'Beatriz dice que "solo decora con chocolate", pero su pastel tiene glaseado lila... el mismo color de la huella del azucarero.',
+        necesaria: false,
+      },
+    ],
+  },
+};
+
+// Orden del archivo: de lo más fácil a lo más difícil
+const ORDEN = [
+  'pastel', 'colegio', 'cuadro', 'circo', 'restaurante', 'robot',
+  'estadio', 'collar', 'tren', 'hotel', 'television', 'cafe',
+];
+
+const TODOS = Object.fromEntries(
+  [...ORIGINALES, ...NUEVOS].map((c) => [c.id, { ...c, ...(EXTRAS[c.id] ?? {}) }])
+);
+
+export const CASOS = ORDEN.map((id, i) => ({ ...TODOS[id], numero: i + 1 }));

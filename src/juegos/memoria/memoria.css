@@ -1,0 +1,45 @@
+/* =========================================================
+   MEMORIA — extras: lista de mazos, modo tríos y tablero Experto
+   ========================================================= */
+
+/* Con 11 mazos, la lista se acomoda en varias filas en vez de desplazarse */
+.mem-mazos__lista {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+.mem-explicacion {
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-borde);
+  color: var(--texto-suave);
+  font-size: 0.95rem;
+}
+
+.mem-explicacion strong {
+  color: var(--acento);
+}
+
+/* Tablero Experto (8 columnas): un poco menos de espacio entre cartas */
+.tablero.mem-tablero--grande {
+  --gap: clamp(4px, 1vw, 10px);
+  width: min(
+    100%,
+    calc(var(--cols) * 104px),
+    max(280px, calc((100svh - 380px) * var(--cols) / var(--filas) * 0.75))
+  );
+}
+
+@media (max-width: 640px) {
+  .mem-mazos__lista .selector__opcion {
+    flex: 1 1 30%;
+    justify-content: center;
+    font-size: 0.82rem;
+    padding: 6px 6px;
+  }
+
+  .tablero.mem-tablero--grande {
+    --gap: 3px;
+  }
+}

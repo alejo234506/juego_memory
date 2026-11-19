@@ -49,6 +49,33 @@ const JUEGOS = [
     color: '#1f7a4d',
     Componente: lazy(() => import('./juegos/sopa/SopaDeLetras.jsx')),
   },
+  {
+    id: 'sudoku',
+    nombre: 'Sudoku',
+    icono: '🔢',
+    habilidad: 'Concentración',
+    descripcion: 'Llena la cuadrícula sin repetir números. Del Mini al Experto.',
+    color: '#5b4636',
+    Componente: lazy(() => import('./juegos/sudoku/Sudoku.jsx')),
+  },
+  {
+    id: 'codigo',
+    nombre: 'Código secreto',
+    icono: '🔐',
+    habilidad: 'Razonamiento',
+    descripcion: 'Descifra la clave escondida combinando las pistas de cada intento.',
+    color: '#7a2e8c',
+    Componente: lazy(() => import('./juegos/codigo/CodigoSecreto.jsx')),
+  },
+  {
+    id: 'karts',
+    nombre: 'Turbo Karts',
+    icono: '🏎️',
+    habilidad: 'Reflejos',
+    descripcion: 'Carreras de karts para 2 jugadores en la misma pantalla, con turbos y objetos.',
+    color: '#c62828',
+    Componente: lazy(() => import('./juegos/karts/Karts.jsx')),
+  },
 ];
 
 const rutaActual = () => {

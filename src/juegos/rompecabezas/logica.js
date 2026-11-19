@@ -5,9 +5,10 @@ export const TAMANOS = {
   3: { nombre: 'Fácil', pasosMezcla: 160, estrellas: [45, 90] },
   4: { nombre: 'Medio', pasosMezcla: 320, estrellas: [140, 260] },
   5: { nombre: 'Difícil', pasosMezcla: 520, estrellas: [320, 560] },
+  6: { nombre: 'Experto', pasosMezcla: 900, estrellas: [620, 1050] },
 };
 
-export const ORDEN_TAMANOS = [3, 4, 5];
+export const ORDEN_TAMANOS = [3, 4, 5, 6];
 
 export const HUECO = 0;
 
@@ -144,4 +145,59 @@ export function recorteImagen(valor, n) {
   const x = n === 1 ? 0 : (columna(casilla, n) / (n - 1)) * 100;
   const y = n === 1 ? 0 : (fila(casilla, n) / (n - 1)) * 100;
   return `${x}% ${y}%`;
+}
+
+// =====================================================================
+// Modo "Fichas giradas": cada ficha ya está en su casilla pero girada.
+// Se guarda cuántos cuartos de vuelta lleva cada ficha (puede ser cualquier
+// entero, positivo o negativo, para que la animación siempre gire hacia el
+// lado correcto). Está derecha cuando el giro es múltiplo de 4.
+// =====================================================================
+
+export const normalizarGiro = (giro) => ((giro % 4) + 4) % 4;
+
+export const estaDerecha = (giro) => normalizarGiro(giro) === 0;
+
+export const girosResueltos = (giros) => giros.every(estaDerecha);
+
+export const cuantasDerechas = (giros) => giros.filter(estaDerecha).length;
+
+/** Gira la ficha `indice` un cuarto de vuelta: sentido 1 = horario, -1 = antihorario. */
+export function girar(giros, indice, sentido = 1) {
+  if (indice < 0 || indice >= giros.length) return null;
+  const nuevos = giros.slice();
+  nuevos[indice] += sentido >= 0 ? 1 : -1;
+  return nuevos;
+}
+
+/** Menos giros posibles para dejarlo todo derecho (girando hacia el lado más corto). */
+export function minimoGiros(giros) {
+  return giros.reduce((total, g) => {
+    const r = normalizarGiro(g);
+    return total + Math.min(r, 4 - r);
+  }, 0);
+}
+
+/**
+ * Giros iniciales al azar: nunca empieza resuelto y como máximo
+ * una cuarta parte de las fichas queda derecha desde el principio.
+ */
+export function mezclarGiros(n, azar = Math.random) {
+  const total = n * n;
+  const giros = Array.from({ length: total }, () => Math.floor(azar() * 4));
+  const maxDerechas = Math.floor(total / 4);
+  let derechas = giros.map((g, i) => (g === 0 ? i : -1)).filter((i) => i >= 0);
+  while (derechas.length > maxDerechas) {
+    const k = Math.floor(azar() * derechas.length);
+    giros[derechas[k]] = 1 + Math.floor(azar() * 3);
+    derechas.splice(k, 1);
+  }
+  return giros;
+}
+
+/** Estrellas del modo girar, comparando los giros usados con el mínimo posible. */
+export function calcularEstrellasGiro(movimientos, minimo) {
+  if (movimientos <= Math.ceil(minimo * 1.15) + 2) return 3;
+  if (movimientos <= Math.ceil(minimo * 1.6) + 4) return 2;
+  return 1;
 }

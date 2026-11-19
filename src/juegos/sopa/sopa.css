@@ -465,6 +465,106 @@
   40% { transform: translateY(-4px) scale(1.06); }
 }
 
+
+/* ---------- Modos ---------- */
+.sopa-modos .selector__opcion {
+  white-space: nowrap;
+}
+
+.sopa-urgente {
+  color: var(--error);
+  animation: sopa-latido 0.8s ease-in-out infinite;
+}
+
+@keyframes sopa-latido {
+  50% { transform: scale(1.12); }
+}
+
+/* ---------- Rompecráneos: lista de definiciones ---------- */
+.sopa-instruccion {
+  font-size: 0.85rem;
+  color: rgba(43, 33, 24, 0.7);
+  margin: -2px 0 8px;
+}
+
+.sopa-lista.sopa-lista--definiciones {
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.sopa-lista .sopa-def {
+  align-items: flex-start;
+  padding: 6px 2px;
+  border-bottom: 1px dashed var(--linea);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.sopa-def .sopa-lista__marca {
+  margin-top: 3px;
+}
+
+.sopa-def__cuerpo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sopa-def__mascara {
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(43, 33, 24, 0.75);
+  overflow-wrap: anywhere;
+}
+
+.sopa-def__palabra {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--tinta);
+  animation: sopa-revelar 0.4s ease-out both;
+}
+
+.sopa-def.sopa-lista__hallada .sopa-def__texto {
+  opacity: 0.55;
+}
+
+@keyframes sopa-revelar {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+.sopa-def__ayuda {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--linea);
+  border-radius: 50%;
+  background: transparent;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.sopa-def__ayuda:hover {
+  transform: scale(1.1) rotate(-8deg);
+  background: rgba(255, 207, 74, 0.35);
+}
+
+@media (max-width: 640px) {
+  .sopa-modos .selector__opcion {
+    font-size: 0.82rem;
+    padding: 8px 4px;
+  }
+
+  .sopa-lista .sopa-def {
+    font-size: 0.88rem;
+  }
+}
+
 /* ---------- Celulares ---------- */
 @media (max-width: 640px) {
   .sopa-opciones {

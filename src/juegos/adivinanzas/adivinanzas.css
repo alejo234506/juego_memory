@@ -478,6 +478,7 @@
 
 .adv-intentos {
   flex-basis: 100%;
+  order: 3;
   font-size: 0.9rem;
   color: var(--texto-suave);
 }
@@ -804,5 +805,112 @@
   .adv *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* ============ Modos, dificultad y explicaciones ============ */
+.adv-modos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.adv-modo,
+.adv-dificultad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 10px 12px;
+  border: none;
+  border-radius: 10px;
+  color: var(--tinta);
+  text-align: center;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.65), transparent 50%),
+    linear-gradient(var(--papel), var(--papel-2));
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 10px 16px -10px rgba(0, 0, 0, 0.7);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.adv-modo:hover,
+.adv-dificultad:hover {
+  transform: translateY(-3px) rotate(-1deg);
+}
+
+.adv-modo--activo,
+.adv-dificultad--activa {
+  transform: translateY(-4px);
+  box-shadow: 0 0 0 3px var(--acento), 0 14px 20px -10px rgba(0, 0, 0, 0.8);
+}
+
+.adv-modo__icono {
+  font-size: 2rem;
+}
+
+.adv-modo strong {
+  font-size: 1.1rem;
+}
+
+.adv-modo small,
+.adv-dificultad small {
+  font-size: 0.78rem;
+  color: #8a7350;
+}
+
+/* El desafío del genio parece una tarjeta de lujo */
+.adv-modo--genio {
+  color: #fff8ec;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.25), transparent 45%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.06) 0 8px, transparent 8px 16px),
+    linear-gradient(135deg, #3b2c8f, #6d1f6b);
+  border: 2px solid rgba(255, 215, 120, 0.6);
+}
+
+.adv-modo--genio small {
+  color: rgba(255, 248, 236, 0.8);
+}
+
+.adv-dificultades {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.adv-dificultad__nombre {
+  font-weight: 600;
+}
+
+.adv-cerebros {
+  font-size: 0.95rem;
+  letter-spacing: -0.1em;
+  white-space: nowrap;
+}
+
+.adv-explicacion {
+  flex-basis: 100%;
+  order: 3;
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border-left: 5px solid var(--acento);
+  color: var(--tinta);
+  background: var(--papel);
+  line-height: 1.4;
+  text-align: left;
+  box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.6);
+  animation: adv-explicar 0.35s ease-out both;
+}
+
+.adv-aviso-vacio {
+  color: var(--error);
+  font-weight: 600;
+}
+
+@keyframes adv-explicar {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }
