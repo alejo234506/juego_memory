@@ -2,6 +2,8 @@
 
 Ocho juegos para entrenar la mente (y uno de carreras para jugar en pareja), todos sobre una mesa de madera con aspecto realista.
 
+<p align="center"><img src="docs/preview.png" alt="Vista previa de la Sala de Juegos Mentales" width="900"/></p>
+
 **Jugar en línea:** https://juego-memory.vercel.app/
 
 | Juego | Entrena | Qué tiene |
